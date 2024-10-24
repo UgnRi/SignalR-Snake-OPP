@@ -5,6 +5,7 @@ using System.ComponentModel.DataAnnotations;
 using System.Drawing;
 using System.Linq;
 using System.Web;
+using SignalR_Snake.Models.Strategies;
 using Microsoft.Ajax.Utilities;
 
 namespace SignalR_Snake.Models
@@ -23,5 +24,19 @@ namespace SignalR_Snake.Models
         public double Direction { get; set; }
         public List<SnekPart> Parts { get; set; }
         public string Color { get; set; }
+
+        public IMovementStrategy MovementStrategy { get; set; } = new NormalMovementStrategy();
+
+        public void ToggleMovementStrategy()
+        {
+            if (Fast)
+            {
+                MovementStrategy = new BoostMovementStrategy();
+            }
+            else
+            {
+                MovementStrategy = new NormalMovementStrategy();
+            }
+        }
     }
 }

@@ -11,6 +11,9 @@ using Microsoft.Ajax.Utilities;
 using Microsoft.AspNet.SignalR;
 using Microsoft.AspNet.SignalR.Hubs;
 using SignalR_Snake.Models;
+using SignalR_Snake.Models.Strategies;
+using SignalR_Snake.Models.Observer;
+using SignalR_Snake.Utilities;
 using Timer = System.Timers.Timer;
 
 namespace SignalR_Snake.Hubs
@@ -21,6 +24,24 @@ namespace SignalR_Snake.Hubs
         public static List<Food> Foods = new List<Food>();
         private static IHubCallerConnectionContext<dynamic> clientsStatic;
         public static Random Rng = new Random();
+
+        public List<ISnakeObserver> observers = new List<ISnakeObserver>();
+        public void RegisterObserver(ISnakeObserver observer)
+        {
+            observers.Add(observer);
+        }
+        public void RemoveObserver(ISnakeObserver observer)
+        {
+            observers.Remove(observer);
+        }
+
+        public void NotifySnakeUpdated(Snake snake)
+        {
+            foreach (var observer in observers)
+            {
+                observer.OnSnakeUpdated(snake);
+            }
+        }
 
         public void NewSnek(string name)
         {
@@ -46,19 +67,20 @@ namespace SignalR_Snake.Hubs
             };
             lock (Sneks)
             {
-                Sneks.Add(new Snake()
+                var newSnake = new Snake()
                 {
                     Name = name,
                     ConnectionId = Context.ConnectionId,
                     Direction = 0,
                     Parts = pos,
                     Width = 5,
-                    Color = RandomColor()
-                });
+                    Color = color
+                };
+                Sneks.Add(newSnake);
+                NotifySnakeUpdated(newSnake);
             }
             clientsStatic = Clients;
         }
-
 
         static SnakeHub()
         {
@@ -75,28 +97,16 @@ namespace SignalR_Snake.Hubs
             {
                 foreach (var snek in Sneks)
                 {
-                    Point nextPosition;
-                    if (snek.Fast)
-                    {
-                        nextPosition =
-                            new Point(snek.Parts[0].Position.X + (int)(Math.Cos(snek.Dir * (Math.PI / 180)) * snek.SpeedTwo),
-                                snek.Parts[0].Position.Y + (int)(Math.Sin(snek.Dir * (Math.PI / 180)) * snek.SpeedTwo));
-                    }
-                    else
-                    {
-                        nextPosition = new Point(snek.Parts[0].Position.X + (int)(Math.Cos(snek.Dir * (Math.PI / 180)) * snek.Speed),
-                            snek.Parts[0].Position.Y + (int)(Math.Sin(snek.Dir * (Math.PI / 180)) * snek.Speed));
-                    }
+                    //Strategy
+                    snek.ToggleMovementStrategy();
 
+                    Point nextPosition = snek.MovementStrategy.Move(snek.Parts[0].Position, snek.Dir, snek.Speed);
 
                     for (int i = 0; i < snek.Parts.Count - 1; i++)
                     {
-                        if (i != snek.Parts.Count - 1)
-                        {
-                            snek.Parts[snek.Parts.Count - (i + 1)].Position =
-                                snek.Parts[snek.Parts.Count - (2 + i)].Position;
-                        }
+                        snek.Parts[snek.Parts.Count - (i + 1)].Position = snek.Parts[snek.Parts.Count - (2 + i)].Position;
                     }
+
                     snek.Parts[0].Position = nextPosition;
                     lock (Foods)
                     {
@@ -155,6 +165,7 @@ namespace SignalR_Snake.Hubs
                         Foods.Add(new Food() {Color = RandomColor(), Position = part.Position});
                     }
                     toRemoveSnakes.Add(snek);
+                    clientsStatic.User(snek.ConnectionId).Died();
                     break;
                 }
                 foreach (var snek in toRemoveSnakes)
@@ -209,10 +220,10 @@ namespace SignalR_Snake.Hubs
                 Clients.Caller.Score(ordered);
             }
         }
-
+        //Singleton
         public static string RandomColor()
         {
-            return $"#{Rng.Next(0x1000000):X6}";
+            return RandomColorSingletonHelper.Instance.GenerateRandomColor();
         }
 
         //not being used?

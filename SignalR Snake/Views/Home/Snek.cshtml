@@ -48,6 +48,15 @@
             com.client.myPos = function(point) {
                 myPoint = point;
             }
+            com.client.NewSnakeCreated = function (snakeName) {
+                alert("A new snake has been created: " + snakeName);
+            }
+            com.client.myPos = function (point) {
+                myPoint = point;
+            }
+            com.client.score = function (snekS) {
+                scores = snekS;
+            }
             com.client.died = function () {
                 $.connection.hub.stop();
                 window.location.href = "";
@@ -161,6 +170,7 @@
                     com.server.score();
                     setTimeout(arguments.callee, 1000);
                 });
+
                 //redraw
                 $(function drawFrame() {
                     ctx.clearRect(0, 0, canvas.width, canvas.height);
