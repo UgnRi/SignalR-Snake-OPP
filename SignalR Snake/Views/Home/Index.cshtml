@@ -1,0 +1,40 @@
+﻿
+    <div class="container body-content">
+        @model SignalR_Snake.Models.Snake
+
+        @{
+            ViewBag.Title = "Snake";
+        }
+        @using (Html.BeginForm())
+        {
+            @Html.AntiForgeryToken()
+
+            <div>
+                @Html.ValidationSummary(true, "", new { @class = "text-danger" })
+                <div class="form-group">
+                    <div class="row">
+                        <div class="col-lg-4 col-lg-offset-4 text-center">
+                            <h3>Snake name</h3>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-lg-4 col-lg-offset-4 text-center">
+                            @Html.EditorFor(model => model.Name, new { htmlAttributes = new { @class = "form-control", autocomplete = "off" } })
+                            @Html.ValidationMessageFor(model => model.Name, "", new { @class = "text-danger" })
+                        </div>
+                    </div>
+                    <br />
+
+                </div>
+                <div class="row">
+                    <div class="col-lg-offset-4 col-lg-4 text-center">
+                        <input type="submit" value="Create" class="btn btn-lg width-40pc border-rad-25" />
+                    </div>
+                </div>
+
+            </div>
+        }
+        @section Scripts {
+            @Scripts.Render("~/bundles/jqueryval")
+        }
+    </div>

@@ -1,0 +1,253 @@
+﻿@using System.Web.UI.WebControls
+@using SignalR_Snake.Models
+@model dynamic
+
+@{
+    //Layout = null;
+    ViewBag.Title = "Snake";
+    //Snake snake = (Snake) ViewData["Snake"];
+    Snake snake = Model;
+    if (snake.Name == null)
+    {
+        Response.Redirect("~/Home/");
+    }
+}
+@*<canvas id="fieldTwo" height="2000" width="2000">  </canvas>*@
+<canvas id="field" height="2000" width="2000">  </canvas>
+
+@section scripts {
+    <script src="~/Scripts/jquery.signalR-2.2.0.min.js"></script>
+    <script src="~/signalr/hubs"></script>
+    @* ReSharper disable once CallerCalleeUsing *@
+    @* ReSharper disable once PossiblyUnassignedProperty *@
+    <script>
+        var canvas = document.getElementById('field');
+        //var secondaryCanvas = document.getElementById('fieldTwo');
+        //var secondaryCtx = secondaryCanvas.getContext('2d');
+        var ctx = canvas.getContext('2d');
+
+        var cursorX = 0;
+        var cursorY = 0;
+        var snakeParts = [];
+        var scores = [];
+        var Gfoods = [];
+        var myPoint;
+        $(function() {
+            //connection
+            var com = $.connection.snakeHub;
+
+
+            //recive positions
+            com.client.allPos = function (positions, mPoint, foods) {
+                //com.server.myPos();
+                snakeParts = positions;
+                Gfoods = foods;
+                myPoint = mPoint;
+            }
+            //get my position
+            com.client.myPos = function(point) {
+                myPoint = point;
+            }
+            com.client.died = function () {
+                $.connection.hub.stop();
+                window.location.href = "";
+            }
+            com.client.score =function(snekS) {
+                scores = snekS;
+            }
+            //mousemove
+            document.onmousemove = function(e) {
+                var rect = canvas.getBoundingClientRect();
+                cursorX = (e.clientX - rect.left) / (rect.right - rect.left) * canvas.width;
+                cursorY = (e.clientY - rect.top) / (rect.bottom - rect.top) * canvas.height;
+            }
+            document.onmouseup = function () {
+                com.server.speed();
+            }
+            document.onmousedown = function () {
+                com.server.speed();
+            }
+
+            //function getRandomColor() {
+            //    var letters = '0123456789ABCDEF'.split('');
+            //    var color = '#';
+            //    for (var i = 0; i < 6; i++) {
+            //        color += letters[Math.floor(Math.random() * 16)];
+            //    }
+            //    return color;
+            //}
+            //connected
+            $.connection.hub.start().done(function() {
+                //new snake
+                com.server.newSnek('@snake.Name');
+                //com.server.myPos();
+                //
+                $(function dos() {
+                    //requestAnimationFrame(dos);
+                    //ctx.save();
+                    var angle;
+                    com.server.allPos();
+                    if (snakeParts !== null && myPoint != undefined) {
+                        var d = myPoint.split(",");
+                        var v1 = { x: cursorX - d[0], y: cursorY - d[1] };
+                        angle = Math.atan2(v1.y, v1.x) * 180 / Math.PI;
+                    } else {
+                        angle = 0;
+                    }
+                    //console.log(angle);
+                    com.server.sendDir(angle);
+                    //draw snakes
+                    if (snakeParts !== null) {
+
+                        for (var i = 0; i < snakeParts.length; i++) {
+                            var d = snakeParts[i].Position.split(",");
+                            if (snakeParts[i].Name != null) {
+                                ctx.font = "20px Calibri";
+                                ctx.fillStyle = 'white';
+                                var x = d[0] - (snakeParts[i].Name.length / 2);
+                                var y = d[1];
+                                y =y*1+ 25;
+                                ctx.fillText(snakeParts[i].Name, x, y);
+                            }
+                            //ctx.fillStyle = getRandomColor();
+                            ctx.fillStyle = snakeParts[i].Color;
+                            ctx.beginPath();
+
+                            ctx.arc(d[0], d[1], 10, 0, 2 * Math.PI);
+                            ctx.stroke();
+                            ctx.fill();
+                        }
+                    }
+                    //draw food
+                    if (Gfoods !== null) {
+                        for (var i = 0; i < Gfoods.length; i++) {
+                            var f = Gfoods[i].Position.split(",");
+                            ctx.fillStyle = Gfoods[i].Color;
+                            ctx.beginPath();
+                            ctx.arc(f[0], f[1], 2, 0, 2 * Math.PI);
+                            ctx.stroke();
+                            //ctx.closePath();
+                            ctx.fill();
+                        }
+
+                    }
+                    //draw score
+                    if (scores !== null) {
+                        if (scores.length <= 10) {
+                            for (var i = 0; i < scores.length; i++) {
+                                ctx.font = "20px Calibri";
+                                ctx.fillStyle = 'white';
+                                ctx.fillText(i + 1 + ". " + "(" + scores[i].Length * 10 + ")" + scores[i].SnakeName, canvas.width - 250, 100 + (30 * i));
+                            }
+                        } else {
+                            for (var i = 0; i < 10; i++) {
+                                ctx.font = "20px Calibri";
+                                ctx.fillStyle = 'white';
+                                ctx.fillText(i + 1 + ". " + "(" + scores[i].Length * 10 + ")" + scores[i].SnakeName, canvas.width - 250, 100 + (30 * i));
+                            }
+                        }
+
+                    }
+                    //ctx.restore();
+                    setTimeout(arguments.callee, 5);
+                });
+
+                //$(function() {
+                //    com.server.checkCollisions();
+                //    setTimeout(arguments.callee, 5);
+                //});
+
+                $(function() {
+                    com.server.score();
+                    setTimeout(arguments.callee, 1000);
+                });
+                //redraw
+                $(function drawFrame() {
+                    ctx.clearRect(0, 0, canvas.width, canvas.height);
+                    setTimeout(arguments.callee, 0);
+                });
+            });
+        });
+
+    </script>
+}
+        @*//var p = [0, 0];
+        //var pos = null; //[{ x: 0, y: 0 }];
+        //var posi = [];
+        //var canvas = document.getElementById('field');
+        //var ctx = canvas.getContext('2d');
+        //var foods = [];
+        /*com.client.removeFood = function(positions) {
+            foods.remove(positions);
+        };
+        com.client.Food = function(position) {
+            foods.push(position);
+        };
+
+        //function getRandomColor() {
+        //    var letters = '0123456789ABCDEF'.split('');
+        //    var color = '#';
+        //    for (var i = 0; i < 6; i++) {
+        //        color += letters[Math.floor(Math.random() * 16)];
+        //    }
+        //    return color;
+        //}
+
+        document.onmousemove = function(e) {
+            var rect = canvas.getBoundingClientRect();
+            cursorX = (e.clientX - rect.left) / (rect.right - rect.left) * canvas.width;
+            cursorY = (e.clientY - rect.top) / (rect.bottom - rect.top) * canvas.height;
+        }
+        $.connection.hub.start().done(function() {
+            com.server.newSnek('//snake.Name');
+           // $(function() {
+           //     var angles = [];
+//if (pos != null) {
+            //        for (var i = 0; i < pos.length; i++) {
+             //           var d; // = pos[i].split(",");
+                //        var v1;
+                //        if (i == 0) {
+                //            d = pos[i].split(",");
+                //            v1 = { x: cursorX - d[0], y: cursorY - d[1] };
+                 //       } else {
+                //            d = pos[i - 1].split(",");
+               //             v1 = { x: cursorX - d[0], y: cursorY - d[1] };
+               //         }
+
+              //          var angle = Math.atan2(v1.y, v1.x) * 180 / Math.PI;
+             //           angles.push(angle);
+            //        }
+           //     } else {
+          //          angles = [45];
+                }
+                //console.log(angle);
+                com.server.sendDir(angles);
+                //draw food
+                if (foods != null) {
+                    for (var i = 0; i < foods.length; i++) {
+
+                        for (var i = 0; i < foods.length; i++) {
+                            ctx.beginPath();
+                            var d = foods[i].split(",");
+                            ctx.arc(d[0], d[1], 3, 0, 2 * Math.PI);
+                            ctx.fill();
+                        }
+
+                    }
+                }
+                if (pos != null) {
+                    for (var i = 0; i < pos.length; i++) {
+                        //ctx.clearRect(0, 0, 1000, 1000);
+                        var d = pos[i].split(",");
+
+                        ctx.beginPath();
+                        ctx.arc(d[0], d[1], 10, 0, 2 * Math.PI);
+                        ctx.stroke();
+
+                    }
+                }
+            setTimeout(arguments.callee, 10);
+        });
+        $(function() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            setTimeout(arguments.callee, 30);*@
