@@ -180,6 +180,11 @@
     <Compile Include="Hubs\SnakeHub.cs" />
     <Compile Include="Models\Builder\ISnakeBuilder.cs" />
     <Compile Include="Models\Builder\SnakeBuilder.cs" />
+    <Compile Include="Models\Factory\BasicSnakeFactory.cs" />
+    <Compile Include="Models\Factory\LongSnakeFactory.cs" />
+    <Compile Include="Models\Factory\MediumSnakeFactory.cs" />
+    <Compile Include="Models\Factory\ShortSnakeFactory.cs" />
+    <Compile Include="Models\Factory\SnakeFactory.cs" />
     <Compile Include="Models\Field.cs" />
     <Compile Include="Models\Food.cs" />
     <Compile Include="Models\Observer\ISnakeObserver.cs" />

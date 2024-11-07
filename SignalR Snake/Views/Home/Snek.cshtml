@@ -79,7 +79,7 @@
 
             // Start SignalR connection
             $.connection.hub.start().done(function () {
-                com.server.newSnek('@snake.Name');
+                com.server.newSnek('@snake.Name', '@snake.SnakeType');
 
                 // Main game loop using requestAnimationFrame
                 function gameLoop() {
