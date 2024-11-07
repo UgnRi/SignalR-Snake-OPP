@@ -29,9 +29,9 @@ namespace SignalR_Snake.Models.Builder
             return this;
         }
 
-        public ISnakeBuilder AddPart(SnekPart part)
+        public ISnakeBuilder AddParts(List<SnekPart> parts)
         {
-            _parts.Add(part);
+            _parts.AddRange(parts);
             return this;
         }
 

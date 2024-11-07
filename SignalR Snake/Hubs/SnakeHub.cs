@@ -12,6 +12,7 @@ using Microsoft.AspNet.SignalR;
 using Microsoft.AspNet.SignalR.Hubs;
 using SignalR_Snake.Models;
 using SignalR_Snake.Models.Builder;
+using SignalR_Snake.Models.Factory;
 using SignalR_Snake.Models.Strategies;
 using SignalR_Snake.Models.Observer;
 using SignalR_Snake.Utilities;
@@ -44,22 +45,30 @@ namespace SignalR_Snake.Hubs
             }
         }
 
-        public void NewSnek(string name)
+        public void NewSnek(string name, string snakeType)
         {
-            Rng = new Random();
-            Point start = new Point(Rng.Next(300, 700), Rng.Next(300, 700));
-            string color = RandomColor();
 
-            var snakeBuilder = new SnakeBuilder()
-                .SetName(name)
-                .SetStartPosition(start)
-                .SetColor(color);
-
-            foreach (var part in GetSnakeParts(start, color, name))
+            SnakeFactory snakeFactory;
+            switch (snakeType.ToLower())
             {
-                snakeBuilder.AddPart(part);
+                case "long":
+                    snakeFactory = new LongSnakeFactory();
+                    break;
+                case "medium":
+                    snakeFactory = new MediumSnakeFactory();
+                    break;
+                case "short":
+                    snakeFactory = new ShortSnakeFactory();
+                    break;
+                case "basic":
+                    snakeFactory = new BasicSnakeFactory();
+                    break;
+                default:
+                    snakeFactory = new BasicSnakeFactory();
+                    break;
             }
 
+            SnakeBuilder snakeBuilder = snakeFactory.CreateSnakeBuilder(name);
             var newSnake = snakeBuilder.Build(Context.ConnectionId);
 
             lock (Sneks)
@@ -69,29 +78,7 @@ namespace SignalR_Snake.Hubs
             }
             clientsStatic = Clients;
         }
-        private List<SnekPart> GetSnakeParts(Point start, string color, string name)
-        {
-            List<SnekPart> parts = new List<SnekPart>();
 
-            parts.Add(new SnekPart
-            {
-                Color = color,
-                Position = new Point(start.X, start.Y),
-                Name = name
-            });
-            
-            for (int i = 1; i < 14; i++)
-            {
-                parts.Add(new SnekPart
-                {
-                    Color = color,
-                    Position = new Point(start.X - (i * 6), start.Y - (i * 6)),
-                });
-            }
-
-            return parts;
-        }
-        
 
         static SnakeHub()
         {

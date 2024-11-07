@@ -15,6 +15,7 @@ namespace SignalR_Snake.Models
         [DisplayName("Snake name")]
         [Required]
         public string Name { get; set; }
+        public string SnakeType { get; set; }
         public int Width { get; set; } = 10;
         public bool Fast { get; set; } = false;
         public int Speed { get; set; } = 4;

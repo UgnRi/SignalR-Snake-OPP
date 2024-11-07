@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.Drawing;
 
 namespace SignalR_Snake.Models.Builder
@@ -7,7 +8,7 @@ namespace SignalR_Snake.Models.Builder
         ISnakeBuilder SetName(string name);
         ISnakeBuilder SetStartPosition(Point startPosition);
         ISnakeBuilder SetColor(string color);
-        ISnakeBuilder AddPart(SnekPart part);
+        ISnakeBuilder AddParts(List<SnekPart> parts);
         Snake Build(string connectionId);
     }
 }
