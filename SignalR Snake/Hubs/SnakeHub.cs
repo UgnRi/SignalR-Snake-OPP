@@ -28,14 +28,6 @@ namespace SignalR_Snake.Hubs
         public static Random Rng = new Random();
 
         public List<ISnakeObserver> observers = new List<ISnakeObserver>();
-        public void RegisterObserver(ISnakeObserver observer)
-        {
-            observers.Add(observer);
-        }
-        public void RemoveObserver(ISnakeObserver observer)
-        {
-            observers.Remove(observer);
-        }
 
         public void NotifySnakeUpdated(Snake snake)
         {
@@ -43,6 +35,7 @@ namespace SignalR_Snake.Hubs
             {
                 observer.OnSnakeUpdated(snake);
             }
+            Clients.All.notifyChat($"{snake.Name} has eaten food");
         }
 
         public void NewSnek(string name, string snakeType)
