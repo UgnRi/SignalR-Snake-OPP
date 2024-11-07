@@ -11,6 +11,7 @@ using Microsoft.Ajax.Utilities;
 using Microsoft.AspNet.SignalR;
 using Microsoft.AspNet.SignalR.Hubs;
 using SignalR_Snake.Models;
+using SignalR_Snake.Models.Builder;
 using SignalR_Snake.Models.Strategies;
 using SignalR_Snake.Models.Observer;
 using SignalR_Snake.Utilities;
@@ -48,39 +49,49 @@ namespace SignalR_Snake.Hubs
             Rng = new Random();
             Point start = new Point(Rng.Next(300, 700), Rng.Next(300, 700));
             string color = RandomColor();
-            List<SnekPart> pos = new List<SnekPart>()
+
+            var snakeBuilder = new SnakeBuilder()
+                .SetName(name)
+                .SetStartPosition(start)
+                .SetColor(color);
+
+            foreach (var part in GetSnakeParts(start, color, name))
             {
-                new SnekPart() {Color = color, Position = start, Name = name},
-                new SnekPart() {Color = color, Position = new Point(start.X - 6, start.Y - 6),},
-                new SnekPart() {Color = color, Position = new Point(start.X - 12, start.Y - 12)},
-                new SnekPart() {Color = color, Position = new Point(start.X - 18, start.Y - 18)},
-                new SnekPart() {Color = color, Position = new Point(start.X - 24, start.Y - 24)},
-                new SnekPart() {Color = color, Position = new Point(start.X - 30, start.Y - 30)},
-                new SnekPart() {Color = color, Position = new Point(start.X - 36, start.Y - 36)},
-                new SnekPart() {Color = color, Position = new Point(start.X - 42, start.Y - 42)},
-                new SnekPart() {Color = color, Position = new Point(start.X - 48, start.Y - 48)},
-                new SnekPart() {Color = color, Position = new Point(start.X - 54, start.Y - 54)},
-                new SnekPart() {Color = color, Position = new Point(start.X - 60, start.Y - 60)},
-                new SnekPart() {Color = color, Position = new Point(start.X - 66, start.Y - 66)},
-                new SnekPart() {Color = color, Position = new Point(start.X - 72, start.Y - 72)},
-                new SnekPart() {Color = color, Position = new Point(start.X - 78, start.Y - 78)},
-            };
+                snakeBuilder.AddPart(part);
+            }
+
+            var newSnake = snakeBuilder.Build(Context.ConnectionId);
+
             lock (Sneks)
             {
-                var newSnake = new Snake()
-                {
-                    Name = name,
-                    ConnectionId = Context.ConnectionId,
-                    Direction = 0,
-                    Parts = pos,
-                    Width = 5,
-                    Color = color
-                };
                 Sneks.Add(newSnake);
                 NotifySnakeUpdated(newSnake);
             }
-            clientsStatic = Clients;
+            //clientsStatic = Clients;
         }
+        private List<SnekPart> GetSnakeParts(Point start, string color, string name)
+        {
+            List<SnekPart> parts = new List<SnekPart>();
+
+            parts.Add(new SnekPart
+            {
+                Color = color,
+                Position = new Point(start.X, start.Y),
+                Name = name
+            });
+            
+            for (int i = 1; i < 14; i++)
+            {
+                parts.Add(new SnekPart
+                {
+                    Color = color,
+                    Position = new Point(start.X - (i * 6), start.Y - (i * 6)),
+                });
+            }
+
+            return parts;
+        }
+        
 
         static SnakeHub()
         {

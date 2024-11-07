@@ -13,3 +13,4 @@ namespace SignalR_Snake.Models
         public string Name { get; set; } 
     }
 }
+

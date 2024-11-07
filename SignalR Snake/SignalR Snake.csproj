@@ -178,6 +178,8 @@
       <DependentUpon>Global.asax</DependentUpon>
     </Compile>
     <Compile Include="Hubs\SnakeHub.cs" />
+    <Compile Include="Models\Builder\ISnakeBuilder.cs" />
+    <Compile Include="Models\Builder\SnakeBuilder.cs" />
     <Compile Include="Models\Field.cs" />
     <Compile Include="Models\Food.cs" />
     <Compile Include="Models\Observer\ISnakeObserver.cs" />
