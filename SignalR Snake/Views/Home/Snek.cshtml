@@ -11,7 +11,7 @@
     }
 }
 <canvas id="field" height="2000" width="2000"></canvas>
-<div id="chatbox" style="position: fixed; bottom: 10px; right: 10px; width: 150px; height: 100px; overflow-y: auto; background-color: rgba(0,0,0,0.8); color: white; padding: 10px; border-radius: 5px;">
+<div id="chatbox" style="position: fixed; bottom: 10px; right: 10px; width: 200px; height: 150px; overflow-y: auto; background-color: rgba(0,0,0,0.8); color: white; padding: 10px; border-radius: 5px;">
     <p><strong>Chat:</strong></p>
 </div>
 
@@ -28,13 +28,13 @@
         var Gfoods = [];
         var myPoint;
         var lastUpdateTime = Date.now();
-        var throttleDelay = 100; // milliseconds
+        var throttleDelay = 100;
 
         $(function () {
-            // Connection setup
+            // Connection
             var com = $.connection.snakeHub;
 
-            // SignalR client-side methods
+            // SignalR
             com.client.allPos = function (positions, mPoint, foods) {
                 snakeParts = positions;
                 Gfoods = foods;
@@ -53,6 +53,14 @@
                 $.connection.hub.stop();
                 window.location.href = "";
             };
+            com.client.notifyChat = function (message) {
+                var chatbox = document.getElementById('chatbox');
+                var messageElement = document.createElement('p');
+                messageElement.style.fontSize = '6px';
+                messageElement.textContent = message;
+                chatbox.appendChild(messageElement);
+                chatbox.scrollTop = chatbox.scrollHeight;
+            };
             com.client.PostMessageToChatbox = function (message) {
                 var chatbox = document.getElementById('chatbox');
                 var messageElement = document.createElement('p');
@@ -61,7 +69,7 @@
                 chatbox.scrollTop = chatbox.scrollHeight;
             };
 
-            // Mouse event handling (throttled)
+            // Mouse event
             document.onmousemove = function (e) {
                 var now = Date.now();
                 if (now - lastUpdateTime > throttleDelay) {
@@ -72,16 +80,16 @@
                 }
             };
 
-            // Mouse click handling
+            // Mouse click
             document.onmousedown = document.onmouseup = function () {
                 com.server.speed();
             };
 
-            // Start SignalR connection
+            // Start SignalR
             $.connection.hub.start().done(function () {
                 com.server.newSnek('@snake.Name', '@snake.SnakeType');
 
-                // Main game loop using requestAnimationFrame
+                // game loop
                 function gameLoop() {
                     ctx.clearRect(0, 0, canvas.width, canvas.height);
                     updateGameState();
@@ -143,7 +151,7 @@
                 // Start game loop
                 gameLoop();
 
-                // Periodic updates (less frequent)
+                // updates
                 setInterval(function () {
                     com.server.score();
                 }, 1000);
