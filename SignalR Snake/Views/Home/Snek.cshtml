@@ -3,261 +3,151 @@
 @model dynamic
 
 @{
-    //Layout = null;
     ViewBag.Title = "Snake";
-    //Snake snake = (Snake) ViewData["Snake"];
     Snake snake = Model;
     if (snake.Name == null)
     {
         Response.Redirect("~/Home/");
     }
 }
-@*<canvas id="fieldTwo" height="2000" width="2000">  </canvas>*@
-<canvas id="field" height="2000" width="2000">  </canvas>
+<canvas id="field" height="2000" width="2000"></canvas>
+<div id="chatbox" style="position: fixed; bottom: 10px; right: 10px; width: 150px; height: 100px; overflow-y: auto; background-color: rgba(0,0,0,0.8); color: white; padding: 10px; border-radius: 5px;">
+    <p><strong>Chat:</strong></p>
+</div>
 
 @section scripts {
     <script src="~/Scripts/jquery.signalR-2.2.0.min.js"></script>
     <script src="~/signalr/hubs"></script>
-    @* ReSharper disable once CallerCalleeUsing *@
-    @* ReSharper disable once PossiblyUnassignedProperty *@
     <script>
         var canvas = document.getElementById('field');
-        //var secondaryCanvas = document.getElementById('fieldTwo');
-        //var secondaryCtx = secondaryCanvas.getContext('2d');
         var ctx = canvas.getContext('2d');
-
         var cursorX = 0;
         var cursorY = 0;
         var snakeParts = [];
         var scores = [];
         var Gfoods = [];
         var myPoint;
-        $(function() {
-            //connection
+        var lastUpdateTime = Date.now();
+        var throttleDelay = 100; // milliseconds
+
+        $(function () {
+            // Connection setup
             var com = $.connection.snakeHub;
 
-
-            //recive positions
+            // SignalR client-side methods
             com.client.allPos = function (positions, mPoint, foods) {
-                //com.server.myPos();
                 snakeParts = positions;
                 Gfoods = foods;
                 myPoint = mPoint;
-            }
-            //get my position
-            com.client.myPos = function(point) {
-                myPoint = point;
-            }
-            com.client.NewSnakeCreated = function (snakeName) {
-                alert("A new snake has been created: " + snakeName);
-            }
+            };
             com.client.myPos = function (point) {
                 myPoint = point;
-            }
+            };
+            com.client.NewSnakeCreated = function (snakeName) {
+                alert("A new snake has been created: " + snakeName);
+            };
             com.client.score = function (snekS) {
                 scores = snekS;
-            }
+            };
             com.client.died = function () {
                 $.connection.hub.stop();
                 window.location.href = "";
-            }
-            com.client.score =function(snekS) {
-                scores = snekS;
-            }
-            //mousemove
-            document.onmousemove = function(e) {
-                var rect = canvas.getBoundingClientRect();
-                cursorX = (e.clientX - rect.left) / (rect.right - rect.left) * canvas.width;
-                cursorY = (e.clientY - rect.top) / (rect.bottom - rect.top) * canvas.height;
-            }
-            document.onmouseup = function () {
-                com.server.speed();
-            }
-            document.onmousedown = function () {
-                com.server.speed();
-            }
+            };
+            com.client.PostMessageToChatbox = function (message) {
+                var chatbox = document.getElementById('chatbox');
+                var messageElement = document.createElement('p');
+                messageElement.textContent = message;
+                chatbox.appendChild(messageElement);
+                chatbox.scrollTop = chatbox.scrollHeight;
+            };
 
-            //function getRandomColor() {
-            //    var letters = '0123456789ABCDEF'.split('');
-            //    var color = '#';
-            //    for (var i = 0; i < 6; i++) {
-            //        color += letters[Math.floor(Math.random() * 16)];
-            //    }
-            //    return color;
-            //}
-            //connected
-            $.connection.hub.start().done(function() {
-                //new snake
+            // Mouse event handling (throttled)
+            document.onmousemove = function (e) {
+                var now = Date.now();
+                if (now - lastUpdateTime > throttleDelay) {
+                    var rect = canvas.getBoundingClientRect();
+                    cursorX = (e.clientX - rect.left) / (rect.right - rect.left) * canvas.width;
+                    cursorY = (e.clientY - rect.top) / (rect.bottom - rect.top) * canvas.height;
+                    lastUpdateTime = now;
+                }
+            };
+
+            // Mouse click handling
+            document.onmousedown = document.onmouseup = function () {
+                com.server.speed();
+            };
+
+            // Start SignalR connection
+            $.connection.hub.start().done(function () {
                 com.server.newSnek('@snake.Name');
-                //com.server.myPos();
-                //
-                $(function dos() {
-                    //requestAnimationFrame(dos);
-                    //ctx.save();
-                    var angle;
+
+                // Main game loop using requestAnimationFrame
+                function gameLoop() {
+                    ctx.clearRect(0, 0, canvas.width, canvas.height);
+                    updateGameState();
+                    drawGameObjects();
+                    requestAnimationFrame(gameLoop);
+                }
+
+                function updateGameState() {
                     com.server.allPos();
-                    if (snakeParts !== null && myPoint != undefined) {
+                    if (myPoint && cursorX && cursorY) {
                         var d = myPoint.split(",");
                         var v1 = { x: cursorX - d[0], y: cursorY - d[1] };
-                        angle = Math.atan2(v1.y, v1.x) * 180 / Math.PI;
-                    } else {
-                        angle = 0;
+                        var angle = Math.atan2(v1.y, v1.x) * 180 / Math.PI;
+                        com.server.sendDir(angle);
                     }
-                    //console.log(angle);
-                    com.server.sendDir(angle);
-                    //draw snakes
-                    if (snakeParts !== null) {
+                }
 
-                        for (var i = 0; i < snakeParts.length; i++) {
-                            var d = snakeParts[i].Position.split(",");
-                            if (snakeParts[i].Name != null) {
-                                ctx.font = "20px Calibri";
-                                ctx.fillStyle = 'white';
-                                var x = d[0] - (snakeParts[i].Name.length / 2);
-                                var y = d[1];
-                                y =y*1+ 25;
-                                ctx.fillText(snakeParts[i].Name, x, y);
-                            }
-                            //ctx.fillStyle = getRandomColor();
-                            ctx.fillStyle = snakeParts[i].Color;
+                function drawGameObjects() {
+                    // Draw snakes
+                    if (snakeParts) {
+                        snakeParts.forEach(part => {
+                            var d = part.Position.split(",");
+                            ctx.fillStyle = part.Color;
                             ctx.beginPath();
-
                             ctx.arc(d[0], d[1], 10, 0, 2 * Math.PI);
                             ctx.stroke();
                             ctx.fill();
-                        }
+                            if (part.Name) {
+                                ctx.font = "20px Calibri";
+                                ctx.fillStyle = 'white';
+                                ctx.fillText(part.Name, d[0] - (part.Name.length / 2), d[1] + 25);
+                            }
+                        });
                     }
-                    //draw food
-                    if (Gfoods !== null) {
-                        for (var i = 0; i < Gfoods.length; i++) {
-                            var f = Gfoods[i].Position.split(",");
-                            ctx.fillStyle = Gfoods[i].Color;
+
+                    // Draw food
+                    if (Gfoods) {
+                        Gfoods.forEach(food => {
+                            var f = food.Position.split(",");
+                            ctx.fillStyle = food.Color;
                             ctx.beginPath();
                             ctx.arc(f[0], f[1], 2, 0, 2 * Math.PI);
                             ctx.stroke();
-                            //ctx.closePath();
                             ctx.fill();
-                        }
-
+                        });
                     }
-                    //draw score
-                    if (scores !== null) {
-                        if (scores.length <= 10) {
-                            for (var i = 0; i < scores.length; i++) {
-                                ctx.font = "20px Calibri";
-                                ctx.fillStyle = 'white';
-                                ctx.fillText(i + 1 + ". " + "(" + scores[i].Length * 10 + ")" + scores[i].SnakeName, canvas.width - 250, 100 + (30 * i));
-                            }
-                        } else {
-                            for (var i = 0; i < 10; i++) {
-                                ctx.font = "20px Calibri";
-                                ctx.fillStyle = 'white';
-                                ctx.fillText(i + 1 + ". " + "(" + scores[i].Length * 10 + ")" + scores[i].SnakeName, canvas.width - 250, 100 + (30 * i));
-                            }
+
+                    // Draw scores
+                    if (scores) {
+                        ctx.font = "20px Calibri";
+                        ctx.fillStyle = 'white';
+                        var maxScoresToDisplay = Math.min(scores.length, 10);
+                        for (var i = 0; i < maxScoresToDisplay; i++) {
+                            ctx.fillText(i + 1 + ". (" + scores[i].Length * 10 + ") " + scores[i].SnakeName, canvas.width - 250, 100 + (30 * i));
                         }
-
                     }
-                    //ctx.restore();
-                    setTimeout(arguments.callee, 5);
-                });
+                }
 
-                //$(function() {
-                //    com.server.checkCollisions();
-                //    setTimeout(arguments.callee, 5);
-                //});
+                // Start game loop
+                gameLoop();
 
-                $(function() {
+                // Periodic updates (less frequent)
+                setInterval(function () {
                     com.server.score();
-                    setTimeout(arguments.callee, 1000);
-                });
-
-                //redraw
-                $(function drawFrame() {
-                    ctx.clearRect(0, 0, canvas.width, canvas.height);
-                    setTimeout(arguments.callee, 0);
-                });
+                }, 1000);
             });
         });
-
     </script>
 }
-        @*//var p = [0, 0];
-        //var pos = null; //[{ x: 0, y: 0 }];
-        //var posi = [];
-        //var canvas = document.getElementById('field');
-        //var ctx = canvas.getContext('2d');
-        //var foods = [];
-        /*com.client.removeFood = function(positions) {
-            foods.remove(positions);
-        };
-        com.client.Food = function(position) {
-            foods.push(position);
-        };
-
-        //function getRandomColor() {
-        //    var letters = '0123456789ABCDEF'.split('');
-        //    var color = '#';
-        //    for (var i = 0; i < 6; i++) {
-        //        color += letters[Math.floor(Math.random() * 16)];
-        //    }
-        //    return color;
-        //}
-
-        document.onmousemove = function(e) {
-            var rect = canvas.getBoundingClientRect();
-            cursorX = (e.clientX - rect.left) / (rect.right - rect.left) * canvas.width;
-            cursorY = (e.clientY - rect.top) / (rect.bottom - rect.top) * canvas.height;
-        }
-        $.connection.hub.start().done(function() {
-            com.server.newSnek('//snake.Name');
-           // $(function() {
-           //     var angles = [];
-//if (pos != null) {
-            //        for (var i = 0; i < pos.length; i++) {
-             //           var d; // = pos[i].split(",");
-                //        var v1;
-                //        if (i == 0) {
-                //            d = pos[i].split(",");
-                //            v1 = { x: cursorX - d[0], y: cursorY - d[1] };
-                 //       } else {
-                //            d = pos[i - 1].split(",");
-               //             v1 = { x: cursorX - d[0], y: cursorY - d[1] };
-               //         }
-
-              //          var angle = Math.atan2(v1.y, v1.x) * 180 / Math.PI;
-             //           angles.push(angle);
-            //        }
-           //     } else {
-          //          angles = [45];
-                }
-                //console.log(angle);
-                com.server.sendDir(angles);
-                //draw food
-                if (foods != null) {
-                    for (var i = 0; i < foods.length; i++) {
-
-                        for (var i = 0; i < foods.length; i++) {
-                            ctx.beginPath();
-                            var d = foods[i].split(",");
-                            ctx.arc(d[0], d[1], 3, 0, 2 * Math.PI);
-                            ctx.fill();
-                        }
-
-                    }
-                }
-                if (pos != null) {
-                    for (var i = 0; i < pos.length; i++) {
-                        //ctx.clearRect(0, 0, 1000, 1000);
-                        var d = pos[i].split(",");
-
-                        ctx.beginPath();
-                        ctx.arc(d[0], d[1], 10, 0, 2 * Math.PI);
-                        ctx.stroke();
-
-                    }
-                }
-            setTimeout(arguments.callee, 10);
-        });
-        $(function() {
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            setTimeout(arguments.callee, 30);*@

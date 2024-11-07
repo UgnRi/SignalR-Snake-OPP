@@ -67,7 +67,7 @@ namespace SignalR_Snake.Hubs
                 Sneks.Add(newSnake);
                 NotifySnakeUpdated(newSnake);
             }
-            //clientsStatic = Clients;
+            clientsStatic = Clients;
         }
         private List<SnekPart> GetSnakeParts(Point start, string color, string name)
         {
