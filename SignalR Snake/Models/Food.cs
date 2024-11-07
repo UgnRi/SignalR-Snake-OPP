@@ -11,5 +11,10 @@ namespace SignalR_Snake.Models
         //public int Width { get; set; }
         public Point Position { get; set; }
         public string Color { get; set; }
+
+        public Food Clone()
+        {
+            return (Food)this.MemberwiseClone();
+        }
     }
 }
