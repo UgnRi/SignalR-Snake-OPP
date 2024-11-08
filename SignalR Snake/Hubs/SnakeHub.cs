@@ -113,7 +113,8 @@ namespace SignalR_Snake.Hubs
             Timer moveTimer = new Timer(5) { AutoReset = true, Enabled = true };
             moveTimer.Elapsed += MoveTimer_Elapsed;
         }
-
+        
+        private static Food PrototypeFood = new Food() { Color = RandomColor() };
         private static void MoveTimer_Elapsed(object sender, System.Timers.ElapsedEventArgs e)
         {
             lock (Sneks)
@@ -133,15 +134,17 @@ namespace SignalR_Snake.Hubs
                     snek.Parts[0].Position = nextPosition;
                     lock (Foods)
                     {
-                        if (Foods.Count < 1000)
+                        for (int i = 0; i < 1000 - Foods.Count; i++)
                         {
-                            for (int i = 0; i < 1000 - Foods.Count; i++)
-                            {
-                                Point foodP = new Point(Rng.Next(0, 2000), Rng.Next(0, 2000));
-                                Food food = new Food() { Color = RandomColor(), Position = foodP };
-                                Foods.Add(food);
-                                //Foods.Add(new Point(rng.Next(0,1000),rng.Next(0,1000)));
-                            }
+                            Food clonedFood = PrototypeFood.Clone();
+                            clonedFood.Position = new Point(Rng.Next(0, 2000), Rng.Next(0, 2000));
+                            
+                            clonedFood.Color = RandomColor();
+
+                            Console.WriteLine($"Original Food Memory Address: {PrototypeFood.GetHashCode()}");
+                            Console.WriteLine($"Cloned Food Memory Address: {clonedFood.GetHashCode()}");
+                        
+                            Foods.Add(clonedFood);
                         }
 
                         List<Food> toRemove = new List<Food>();
