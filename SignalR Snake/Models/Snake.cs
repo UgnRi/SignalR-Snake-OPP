@@ -7,6 +7,7 @@ using System.Linq;
 using System.Web;
 using SignalR_Snake.Models.Strategies;
 using Microsoft.Ajax.Utilities;
+using System.Diagnostics;
 
 namespace SignalR_Snake.Models
 {
@@ -28,16 +29,24 @@ namespace SignalR_Snake.Models
 
         public IMovementStrategy MovementStrategy { get; set; } = new NormalMovementStrategy();
 
-        public void ToggleMovementStrategy()
+        public void ToggleMovementStrategy(string strategyType)
         {
-            if (Fast)
+            switch (strategyType.ToLower())
             {
-                MovementStrategy = new BoostMovementStrategy();
+                case "boost":
+                    MovementStrategy = new BoostMovementStrategy();
+                    break;
+                case "slow":
+                    MovementStrategy = new SlowMovementStrategy();
+                    break;
+                case "stop":
+                    MovementStrategy = new StopMovementStrategy();
+                    break;
+                default:
+                    MovementStrategy = new NormalMovementStrategy();
+                    break;
             }
-            else
-            {
-                MovementStrategy = new NormalMovementStrategy();
-            }
+            Debug.WriteLine($"Movement strategy changed to: {strategyType}");
         }
     }
 }

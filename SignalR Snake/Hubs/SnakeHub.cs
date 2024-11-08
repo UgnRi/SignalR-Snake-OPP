@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.Drawing;
 using System.Linq;
+using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Web;
@@ -20,14 +21,30 @@ using Timer = System.Timers.Timer;
 
 namespace SignalR_Snake.Hubs
 {
-    public class SnakeHub : Hub
+    public class SnakeHub : Hub, ISnakeObserver
     {
+
         public static List<Snake> Sneks = new List<Snake>();
         public static List<Food> Foods = new List<Food>();
         private static IHubCallerConnectionContext<dynamic> clientsStatic;
         public static Random Rng = new Random();
 
         public List<ISnakeObserver> observers = new List<ISnakeObserver>();
+
+        public SnakeHub()
+        {
+            var chatObserver = new ChatObserver();
+            RegisterObserver(chatObserver);
+        }
+        public void RegisterObserver(ISnakeObserver observer)
+        {
+            observers.Add(observer);
+        }
+
+        public void RemoveObserver(ISnakeObserver observer)
+        {
+            observers.Remove(observer);
+        }
 
         public void NotifySnakeUpdated(Snake snake)
         {
@@ -37,7 +54,22 @@ namespace SignalR_Snake.Hubs
             }
             Clients.All.notifyChat($"{snake.Name} has eaten food");
         }
+        public void NotifySnakeDied(Snake snake)
+        {
+            foreach (var observer in observers)
+            {
+                observer.OnSnakeDied(snake);
+            }
+        }
+        public void OnSnakeUpdated(Snake snake)
+        {
+            Clients.All.notifyChat($"{snake.Name} was updated in SnakeHub.");
+        }
 
+        public void OnSnakeDied(Snake snake)
+        {
+            Clients.All.notifyChat($"Snake {snake.Name} has died in SnakeHub.");
+        }
         public void NewSnek(string name, string snakeType)
         {
 
@@ -89,7 +121,7 @@ namespace SignalR_Snake.Hubs
                 foreach (var snek in Sneks)
                 {
                     //Strategy
-                    snek.ToggleMovementStrategy();
+
 
                     Point nextPosition = snek.MovementStrategy.Move(snek.Parts[0].Position, snek.Dir, snek.Speed);
 
@@ -211,12 +243,28 @@ namespace SignalR_Snake.Hubs
                 Clients.Caller.Score(ordered);
             }
         }
+        public void ChangeMovementStrategy(string strategyType)
+        {
+            lock (Sneks)
+            {
+                var snek = Sneks.FirstOrDefault(x => x.ConnectionId == Context.ConnectionId);
+                if (snek != null)
+                {
+                    snek.ToggleMovementStrategy(strategyType);
+                }
+            }
+        }
         //Singleton
         public static string RandomColor()
         {
             return RandomColorSingletonHelper.Instance.GenerateRandomColor();
         }
-
+        //Thread safe demo
+        public void GenerateRandomColorForClient()
+        {
+            string color = RandomColorSingletonHelper.Instance.GenerateRandomColor();
+            Clients.Caller.receiveColor(color);
+        }
         //not being used?
         public void NewFood()
         {

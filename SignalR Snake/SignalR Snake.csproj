@@ -187,14 +187,17 @@
     <Compile Include="Models\Factory\SnakeFactory.cs" />
     <Compile Include="Models\Field.cs" />
     <Compile Include="Models\Food.cs" />
+    <Compile Include="Models\Observer\ChatObserver.cs" />
     <Compile Include="Models\Observer\ISnakeObserver.cs" />
     <Compile Include="Models\Observer\ISnakeSubject.cs" />
     <Compile Include="Models\Snake.cs" />
     <Compile Include="Models\SnekPart.cs" />
     <Compile Include="Models\SnekScore.cs" />
     <Compile Include="Models\Strategies\BoostMovementStrategy.cs" />
+    <Compile Include="Models\Strategies\StopMovementStrategy.cs" />
     <Compile Include="Models\Strategies\IMovementStrategy.cs" />
     <Compile Include="Models\Strategies\NormalMovementStrategy.cs" />
+    <Compile Include="Models\Strategies\SlowMovementStrategy.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Startup.cs" />
     <Compile Include="Utilities\RandomColorSingletonHelper.cs" />

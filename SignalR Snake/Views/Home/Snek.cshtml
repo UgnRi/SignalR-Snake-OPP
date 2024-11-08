@@ -10,15 +10,21 @@
         Response.Redirect("~/Home/");
     }
 }
-<canvas id="field" height="2000" width="2000"></canvas>
-<div id="chatbox" style="position: fixed; bottom: 10px; right: 10px; width: 200px; height: 150px; overflow-y: auto; background-color: rgba(0,0,0,0.8); color: white; padding: 10px; border-radius: 5px;">
-    <p><strong>Chat:</strong></p>
-</div>
+</head>
+<body>
+    <canvas id="field" height="2000" width="2000"></canvas>
+    <div id="chatbox" style="position: fixed; bottom: 10px; right: 10px; width: 200px; height: 150px; overflow-y: auto; background-color: rgba(0,0,0,0.8); color: white; padding: 10px; border-radius: 5px;">
+        <p><strong>Chat:</strong></p>
+    </div>
+    <button id="generateColorsButton" style="position: absolute; top: 10px; left: 10px;">Generate Random Colors (50 Requests)</button>
+</body>
+</html>
 
 @section scripts {
     <script src="~/Scripts/jquery.signalR-2.2.0.min.js"></script>
     <script src="~/signalr/hubs"></script>
     <script>
+        var hub = $.connection.snakeHub;
         var canvas = document.getElementById('field');
         var ctx = canvas.getContext('2d');
         var cursorX = 0;
@@ -79,11 +85,26 @@
                     lastUpdateTime = now;
                 }
             };
+            document.addEventListener('keydown', function (e) {
+                if (e.key === 'w') {
+                    hub.server.changeMovementStrategy('boost');
+                }
+                if (e.key === 's') {
+                    hub.server.changeMovementStrategy('stop');
+                }
+                if (e.key === 'a') {
+                    hub.server.changeMovementStrategy('slow');
+                }
+                if (e.key === 'd') {
+                    hub.server.changeMovementStrategy('normal');
+                }
+            });
 
-            // Mouse click
-            document.onmousedown = document.onmouseup = function () {
-                com.server.speed();
-            };
+            /*document.addEventListener('mousedown', function (e) {
+                if (e.button === 0) { 
+                    hub.server.changeMovementStrategy('boost');
+                }
+            });*/
 
             // Start SignalR
             $.connection.hub.start().done(function () {
@@ -153,8 +174,14 @@
 
                 // updates
                 setInterval(function () {
-                    com.server.score();
+                    hub.server.score();
                 }, 1000);
+
+                $('#generateColorsButton').click(function () {
+                    for (var i = 0; i < 50; i++) { // 50 concurrent requests
+                        hub.server.generateRandomColorForClient();
+                    }
+                });
             });
         });
     </script>
