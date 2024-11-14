@@ -3,18 +3,19 @@ using System.Collections.Generic;
 using System.Drawing;
 using System.Linq;
 using System.Web;
+using SignalR_Snake.Models.Prototype;
 
 namespace SignalR_Snake.Models
 {
-    public class Food
+    public class Food : IPrototype
     {
-        //public int Width { get; set; }
         public Point Position { get; set; }
         public string Color { get; set; }
 
-        public Food Clone()
+        // Implementing Clone method from IPrototype interface
+        public IPrototype Clone()
         {
-            return (Food)this.MemberwiseClone();
+            return (IPrototype)this.MemberwiseClone(); // Creates a shallow copy
         }
     }
 }

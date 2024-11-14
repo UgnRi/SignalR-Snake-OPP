@@ -70,26 +70,26 @@ namespace SignalR_Snake.Hubs
         {
             Clients.All.notifyChat($"Snake {snake.Name} has died in SnakeHub.");
         }
-        public void NewSnek(string name, string snakeType)
+        public void NewSnek(string name, string shape)
         {
 
             SnakeFactory snakeFactory;
-            switch (snakeType.ToLower())
+            switch (shape.ToLower())
             {
-                case "long":
-                    snakeFactory = new LongSnakeFactory();
+                case "random":
+                    snakeFactory = new RandomSnakeFactory();
                     break;
-                case "medium":
-                    snakeFactory = new MediumSnakeFactory();
+                case "square":
+                    snakeFactory = new SquareSnakeFactory();
                     break;
-                case "short":
-                    snakeFactory = new ShortSnakeFactory();
+                case "triangle":
+                    snakeFactory = new TriangleSnakeFactory();
                     break;
                 case "basic":
                     snakeFactory = new BasicSnakeFactory();
                     break;
                 default:
-                    snakeFactory = new BasicSnakeFactory();
+                    snakeFactory = new RandomSnakeFactory();
                     break;
             }
 
@@ -113,8 +113,8 @@ namespace SignalR_Snake.Hubs
             Timer moveTimer = new Timer(5) { AutoReset = true, Enabled = true };
             moveTimer.Elapsed += MoveTimer_Elapsed;
         }
-        
-        private static Food PrototypeFood = new Food() { Color = RandomColor() };
+
+        private static Food PrototypeFood = new Food();
         private static void MoveTimer_Elapsed(object sender, System.Timers.ElapsedEventArgs e)
         {
             lock (Sneks)
@@ -136,7 +136,7 @@ namespace SignalR_Snake.Hubs
                     {
                         for (int i = 0; i < 1000 - Foods.Count; i++)
                         {
-                            Food clonedFood = PrototypeFood.Clone();
+                            Food clonedFood = (Food)PrototypeFood.Clone();
                             clonedFood.Position = new Point(Rng.Next(0, 2000), Rng.Next(0, 2000));
                             
                             clonedFood.Color = RandomColor();
