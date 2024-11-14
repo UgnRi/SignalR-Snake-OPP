@@ -23,6 +23,24 @@ namespace SignalR_Snake.Controllers
 
         public ActionResult Snek(Snake snake)
         {
+
+            /*
+            IGameSound gameSound = new BaseGameSound("sweden.wav");
+            gameSound.PlaySound();
+            Thread.Sleep(5000);
+            gameSound = new CreeperSoundDecorator(gameSound, "creeper.wav");
+            gameSound.PlaySound();
+            gameSound = new LightningSoundDecorator(gameSound, "lightning.wav");
+            gameSound.PlaySound();
+            gameSound = new ZombieSoundDecorator(gameSound, "zombie.wav");
+            gameSound.PlaySound();
+            LightningSoundDecorator lightning = (LightningSoundDecorator)gameSound;
+            lightning.StopSound();
+            Thread.Sleep(500);
+            ZombieSoundDecorator zombie = (ZombieSoundDecorator)gameSound;
+            zombie.StopAllSounds();
+            */
+
             //ViewData["Snake"] = snake;
             //ViewBag.Name = snake.Name;
             return View(snake);
