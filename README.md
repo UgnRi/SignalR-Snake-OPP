@@ -1,5 +1,11 @@
 # SignalR Snake #
 
+### Fix for "...\bin\roslyn\csc.exe" not found error
+
+Execute in Package Manager Console:
+
+```Update-Package Microsoft.CodeDom.Providers.DotNetCompilerPlatform -r```
+
 ### What is this repository for? ###
 
 * A simple game inspired by Slither.io made with MVC5 and SignalR. You play as a snake and so do other players,
