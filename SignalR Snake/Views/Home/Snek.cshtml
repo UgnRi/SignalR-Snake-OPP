@@ -1,5 +1,4 @@
-﻿@using System.Web.UI.WebControls
-@using SignalR_Snake.Models
+﻿@using SignalR_Snake.Models
 @model dynamic
 
 @{
@@ -20,10 +19,43 @@
 </body>
 </html>
 
+
+
 @section scripts {
     <script src="~/Scripts/jquery.signalR-2.2.0.min.js"></script>
     <script src="~/signalr/hubs"></script>
     <script>
+        class Projectile {
+            constructor(id, ownerId, startX, startY, targetX, targetY, speed = 5) {
+                this.Id = id;
+                this.OwnerId = ownerId;
+                this.X = startX;
+                this.Y = startY;
+                this.Radius = 5; // Default radius
+                this.Speed = speed;
+                //this.IsActive = this.IsOutOfBounds(canvas.width, canvas.height);
+
+                // Calculate direction vector
+                const directionX = targetX - startX;
+                const directionY = targetY - startY;
+                const magnitude = Math.sqrt(directionX * directionX + directionY * directionY);
+
+                // Normalize and set direction
+                this.DirectionX = (directionX / magnitude) * speed;
+                this.DirectionY = (directionY / magnitude) * speed;
+            }
+
+            // Update projectile position
+            UpdatePosition() {
+                this.X += this.DirectionX;
+                this.Y += this.DirectionY;
+            }
+
+            // Check if the projectile is out of bounds (assuming bounds are defined)
+            IsOutOfBounds(canvasWidth, canvasHeight) {
+                return this.X < 0 || this.X > canvasWidth || this.Y < 0 || this.Y > canvasHeight;
+            }
+        }
         var hub = $.connection.snakeHub;
         var canvas = document.getElementById('field');
         var ctx = canvas.getContext('2d');
@@ -32,9 +64,13 @@
         var snakeParts = [];
         var scores = [];
         var Gfoods = [];
+        var myProjectiles = [];
         var myPoint;
         var lastUpdateTime = Date.now();
         var throttleDelay = 100;
+        //var canvas = document.getElementById('field');
+        //canvas.width = window.innerWidth;  // Adjust canvas width dynamically
+        //canvas.height = window.innerHeight;  // Adjust canvas height dynamically
 
         $(function () {
             // Connection
@@ -85,29 +121,78 @@
                     lastUpdateTime = now;
                 }
             };
+
+            // Add projectile on mouse click
+            document.addEventListener('mousedown', function (e) {
+                if (e.button === 0 && myPoint) { // Left mouse button
+                    var d = myPoint.split(",");
+                    var snakeX = parseFloat(d[0]);
+                    var snakeY = parseFloat(d[1]);
+                    console.log("Pressed");
+                    hub.server.holdProjectiles(snakeX, snakeY, cursorX, cursorY, 5);
+                    console.log("Executed");
+
+/* 
+                    var id = Date.now();
+                    var ownerId = hub.id;
+
+                    var projectile = new Projectile(id, ownerId, snakeX, snakeY, cursorX, cursorY);
+                    myProjectiles.push(projectile);
+
+                    hub.server.sendProjectileData(
+                        {
+                            Id: projectileId,
+                            OwnerId: $.connection.hub.id,
+                            X: projectile.X,
+                            Y: projectile.Y,
+                            DirectionX: projectile.DirectionX,
+                            DirectionY: projectile.DirectionY,
+                            Radius: projectile.Radius
+                        });*/
+
+                    
+                }
+            });
+
+            com.client.receiveProjectile = function (projectile) {
+                myProjectiles.push(new Projectile(projectile.Id, projectile.OwnerId, projectile.X, projectile.Y, projectile.DirectionX, projectile.DirectionY, 5));
+                hub.server.playTapSound();;
+            };
+
+                            com.client.drawAllReleasedProjectiles = function () {
+                    myProjectiles.forEach(proj => {
+                        ctx.fillStyle = 'red';
+                        ctx.beginPath();
+                        ctx.arc(proj.X, proj.Y, proj.Radius, 0, 2 * Math.PI);
+                        ctx.fill();
+                    });
+                };
+
             document.addEventListener('keydown', function (e) {
                 if (e.key === 'w') {
                     hub.server.changeMovementStrategy('boost');
+                    //hub.server.playFastForwardSound();
+                    //hub.server.playTapSound();
                 }
                 if (e.key === 's') {
                     hub.server.changeMovementStrategy('stop');
+                    hub.server.stopAllSounds()
+                    console.log("Pressed S");
+                    hub.server.releaseAllProjectiles();
+                    console.log("Executed FIRE");
                 }
                 if (e.key === 'a') {
                     hub.server.changeMovementStrategy('slow');
                 }
                 if (e.key === 'd') {
                     hub.server.changeMovementStrategy('normal');
+                    hub.server.stopSound();
                 }
             });
 
-            /*document.addEventListener('mousedown', function (e) {
-                if (e.button === 0) { 
-                    hub.server.changeMovementStrategy('boost');
-                }
-            });*/
-
             // Start SignalR
             $.connection.hub.start().done(function () {
+                hub.server.playBackgroundSound();
                 com.server.newSnek('@snake.Name', '@snake.Shape');
 
                 // game loop
@@ -115,6 +200,8 @@
                     ctx.clearRect(0, 0, canvas.width, canvas.height);
                     updateGameState();
                     drawGameObjects();
+                    updateProjectiles(); // Update projectile positions
+                    drawProjectiles();
                     requestAnimationFrame(gameLoop);
                 }
 
@@ -126,6 +213,7 @@
                         var angle = Math.atan2(v1.y, v1.x) * 180 / Math.PI;
                         com.server.sendDir(angle);
                     }
+
                 }
 
                 function drawGameObjects() {
@@ -162,8 +250,6 @@
                             }
                         });
                     }
-                    
-                
 
                     // Draw food
                     if (Gfoods) {
@@ -187,8 +273,26 @@
                         }
                     }
                 }
-                
-                
+
+                function updateProjectiles() {
+                    myProjectiles.forEach((proj, index) => {
+                        proj.UpdatePosition();
+                        console.log(`Projectile ${index}: X = ${proj.X}, Y = ${proj.Y}`);
+
+                        if (proj.IsOutOfBounds(canvas.width, canvas.height)) {
+                            myProjectiles.splice(index, 1);
+                        }
+                    });
+                }
+
+                function drawProjectiles() {
+                    myProjectiles.forEach(proj => {
+                        ctx.fillStyle = 'red';
+                        ctx.beginPath();
+                        ctx.arc(proj.X, proj.Y, proj.Radius, 0, 2 * Math.PI);
+                        ctx.fill();
+                    });
+                }
 
                 // Start game loop
                 gameLoop();

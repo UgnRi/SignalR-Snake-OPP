@@ -12,22 +12,27 @@ using Microsoft.Ajax.Utilities;
 using Microsoft.AspNet.SignalR;
 using Microsoft.AspNet.SignalR.Hubs;
 using SignalR_Snake.Models;
+using SignalR_Snake.Models.Sound;
 using SignalR_Snake.Models.Builder;
 using SignalR_Snake.Models.Factory;
 using SignalR_Snake.Models.Strategies;
 using SignalR_Snake.Models.Observer;
+using SignalR_Snake.Models.Command;
 using SignalR_Snake.Utilities;
 using Timer = System.Timers.Timer;
+using System.Security.Cryptography;
 
 namespace SignalR_Snake.Hubs
 {
     public class SnakeHub : Hub, ISnakeObserver
     {
-
         public static List<Snake> Sneks = new List<Snake>();
         public static List<Food> Foods = new List<Food>();
+        public static List<Projectile> Projectiles = new List<Projectile>();
+        private static CommandInvoker commandInvoker = new CommandInvoker();
         private static IHubCallerConnectionContext<dynamic> clientsStatic;
         public static Random Rng = new Random();
+        private static IGameSound gameSound;
 
         public List<ISnakeObserver> observers = new List<ISnakeObserver>();
 
@@ -36,6 +41,86 @@ namespace SignalR_Snake.Hubs
             var chatObserver = new ChatObserver();
             RegisterObserver(chatObserver);
         }
+
+        public void HoldProjectiles(double startX, double startY, double directionX, double directionY, double radius)
+        {
+            string ownerId = Context.ConnectionId;
+            var command = new FireProjectileCommand(
+                ownerId: ownerId,
+                startX: startX,
+                startY: startY,
+                targetX: directionX,
+                targetY: directionY,
+                speed: 5,
+                onProjectileCreated: (projectile) =>
+                {
+                    Projectiles.Add(projectile);
+
+                    Clients.All.ReceiveProjectile(projectile);
+                }
+            );
+
+            commandInvoker.AddCommand(command);
+        }
+
+        public void DrawAllProjectiles()
+        {
+            Clients.All.DrawAllReleasedProjectiles();
+        }
+
+        public void ReleaseAllProjectiles()
+        {
+            commandInvoker.ExecuteAll();
+            DrawAllProjectiles();
+        }
+
+        public void PlayBackgroundSound()
+        {
+            gameSound = new BaseGameSound("sweden.wav");
+            gameSound.PlaySound();
+        }
+
+        public void PlayFastForwardSound()
+        {
+            gameSound = new FFSoundDecorator(gameSound, "fast-forward.mp3");
+            gameSound.PlaySound();
+        }
+        public void PlayLightningSound()
+        {
+            gameSound = new LightningSoundDecorator(gameSound, "lightning.wav");
+            gameSound.PlaySound();
+        }
+
+        public void PlayCreeperSound()
+        {
+            gameSound = new CreeperSoundDecorator(gameSound, "creeper.wav");
+            gameSound.PlaySound();
+        }
+
+        public void PlayTapSound()
+        {
+            gameSound = new TapSoundDecorator(gameSound, "tap.wav");
+            gameSound.PlaySound();
+        }
+
+        public void PlayZombieSound()
+        {
+            gameSound = new ZombieSoundDecorator(gameSound, "zombie.wav");
+            gameSound.PlaySound();
+        }
+
+        public void StopSound()
+        {
+            gameSound?.StopSound();
+        }
+
+        public void StopAllSounds()
+        {
+            gameSound = new TapSoundDecorator(gameSound, "tap.wav");
+            TapSoundDecorator tap = (TapSoundDecorator)gameSound;
+            tap.StopAllSounds();
+        }
+
         public void RegisterObserver(ISnakeObserver observer)
         {
             observers.Add(observer);
@@ -72,7 +157,6 @@ namespace SignalR_Snake.Hubs
         }
         public void NewSnek(string name, string shape)
         {
-
             SnakeFactory snakeFactory;
             switch (shape.ToLower())
             {
@@ -111,7 +195,7 @@ namespace SignalR_Snake.Hubs
             timer.Elapsed += Timer_Elapsed;
 
             Timer moveTimer = new Timer(5) { AutoReset = true, Enabled = true };
-            moveTimer.Elapsed += MoveTimer_Elapsed;
+            moveTimer.Elapsed += MoveTimer_Elapsed;            
         }
 
         private static Food PrototypeFood = new Food();
@@ -160,6 +244,7 @@ namespace SignalR_Snake.Hubs
                                 snek.Parts.Add(snek.Parts[snek.Parts.Count - 1]);
                                 snek.Parts.Add(snek.Parts[snek.Parts.Count - 1]);
                                 toRemove.Add(food);
+                                //SnakeHub.PlayTapSound();
                             }
                         }
                         foreach (var food in toRemove)
@@ -220,6 +305,7 @@ namespace SignalR_Snake.Hubs
                 //Clients.All.AllPos(snakePoints.ToArray(), myPoint);
             }
         }
+
 
         //public void MyPos()
         //{
@@ -282,6 +368,15 @@ namespace SignalR_Snake.Hubs
                     Clients.All.Food(food);
                 }
             }
+        }
+
+        public void SendProjectileData(Projectile projectileData)
+        {
+            Projectile projectile = new Projectile(projectileData.Id, projectileData.OwnerId, projectileData.X, projectileData.Y, projectileData.DirectionX, projectileData.DirectionY, projectileData.Radius);
+
+            Projectiles.Add(projectile);
+
+            Clients.All.receiveProjectile(projectileData);
         }
 
         public void CheckCollisions()

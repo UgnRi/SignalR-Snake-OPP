@@ -204,8 +204,12 @@
       <DependentUpon>Global.asax</DependentUpon>
     </Compile>
     <Compile Include="Hubs\SnakeHub.cs" />
+    <Compile Include="Models\AbstractFactory\SoundDecoratorAbstractFactory.cs" />
     <Compile Include="Models\Builder\ISnakeBuilder.cs" />
     <Compile Include="Models\Builder\SnakeBuilder.cs" />
+    <Compile Include="Models\Command\CommandInvoker.cs" />
+    <Compile Include="Models\Command\FireProjectileCommand.cs" />
+    <Compile Include="Models\Command\ICommand.cs" />
     <Compile Include="Models\Factory\RandomSnakeFactory.cs" />
     <Compile Include="Models\Factory\BasicSnakeFactory.cs" />
     <Compile Include="Models\Factory\SquareSnakeFactory.cs" />
@@ -216,13 +220,16 @@
     <Compile Include="Models\Observer\ChatObserver.cs" />
     <Compile Include="Models\Observer\ISnakeObserver.cs" />
     <Compile Include="Models\Observer\ISnakeSubject.cs" />
+    <Compile Include="Models\Projectile.cs" />
     <Compile Include="Models\Prototype\IPrototype.cs" />
     <Compile Include="Models\Snake.cs" />
     <Compile Include="Models\SnekPart.cs" />
     <Compile Include="Models\SnekScore.cs" />
     <Compile Include="Models\Sound\BaseGameSound.cs" />
     <Compile Include="Models\Sound\CreeperSoundDecorator.cs" />
+    <Compile Include="Models\Sound\FFSoundDecorator.cs" />
     <Compile Include="Models\Sound\LightningSoundDecorator.cs" />
+    <Compile Include="Models\Sound\TapSoundDecorator.cs" />
     <Compile Include="Models\Sound\ZombieSoundDecorator.cs" />
     <Compile Include="Models\Sound\GameSoundDecorator.cs" />
     <Compile Include="Models\Sound\IGameSound.cs" />
@@ -237,9 +244,10 @@
   </ItemGroup>
   <ItemGroup>
     <Content Include="Assets\Sounds\creeper.wav" />
+    <Content Include="Assets\Sounds\fast-forward.mp3" />
     <Content Include="Assets\Sounds\lightning.wav" />
-    <Content Include="Assets\Sounds\sad.wav" />
     <Content Include="Assets\Sounds\sweden.wav" />
+    <Content Include="Assets\Sounds\tap.wav" />
     <Content Include="Assets\Sounds\zombie.wav" />
     <Content Include="Content\bootstrap.css" />
     <Content Include="Content\bootstrap.min.css" />
@@ -284,7 +292,6 @@
   </ItemGroup>
   <ItemGroup>
     <Folder Include="App_Data\" />
-    <Folder Include="Models\Decorator\" />
   </ItemGroup>
   <ItemGroup>
     <Content Include="fonts\glyphicons-halflings-regular.woff" />
