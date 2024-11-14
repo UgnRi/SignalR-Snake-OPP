@@ -108,7 +108,7 @@
 
             // Start SignalR
             $.connection.hub.start().done(function () {
-                com.server.newSnek('@snake.Name', '@snake.SnakeType');
+                com.server.newSnek('@snake.Name', '@snake.Shape');
 
                 // game loop
                 function gameLoop() {
@@ -129,22 +129,41 @@
                 }
 
                 function drawGameObjects() {
-                    // Draw snakes
                     if (snakeParts) {
                         snakeParts.forEach(part => {
                             var d = part.Position.split(",");
+                            const x = parseFloat(d[0]);
+                            const y = parseFloat(d[1]);
                             ctx.fillStyle = part.Color;
                             ctx.beginPath();
-                            ctx.arc(d[0], d[1], 10, 0, 2 * Math.PI);
+                            switch (part.Shape) {
+                                case 'circle':
+                                    ctx.arc(x, y, 10, 0, 2 * Math.PI);
+                                    break;
+                                case 'square':
+                                    ctx.rect(x - 10, y - 10, 20, 20);
+                                    break;
+                                case 'triangle':
+                                    ctx.moveTo(x, y - 12);
+                                    ctx.lineTo(x - 10, y + 10);
+                                    ctx.lineTo(x + 10, y + 10);
+                                    ctx.closePath();
+                                    break;
+                                default:
+                                    ctx.arc(x, y, 10, 0, 2 * Math.PI);
+                            }
                             ctx.stroke();
                             ctx.fill();
+
                             if (part.Name) {
                                 ctx.font = "20px Calibri";
                                 ctx.fillStyle = 'white';
-                                ctx.fillText(part.Name, d[0] - (part.Name.length / 2), d[1] + 25);
+                                ctx.fillText(part.Name, x - (part.Name.length * 5 / 2), y + 25);
                             }
                         });
                     }
+                    
+                
 
                     // Draw food
                     if (Gfoods) {
@@ -168,6 +187,8 @@
                         }
                     }
                 }
+                
+                
 
                 // Start game loop
                 gameLoop();

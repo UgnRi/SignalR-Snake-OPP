@@ -6,7 +6,7 @@ using SignalR_Snake.Models.Builder;
 
 namespace SignalR_Snake.Models.Factory
 {
-    public class MediumSnakeFactory : SnakeFactory
+    public class SquareSnakeFactory : SnakeFactory
     {
         public override SnakeBuilder CreateSnakeBuilder(string name)
         {
@@ -14,7 +14,7 @@ namespace SignalR_Snake.Models.Factory
             Point start = new Point(Rng.Next(300, 700), Rng.Next(300, 700));
             string color = SnakeHub.RandomColor();
 
-            var parts = GetMediumSnakeParts(start, color, name);
+            var parts = GetSquareSnakeParts(start, color, name);
 
             return (SnakeBuilder)new SnakeBuilder()
                 .SetName(name)
@@ -23,7 +23,7 @@ namespace SignalR_Snake.Models.Factory
                 .AddParts(parts);
         }
 
-        private List<SnekPart> GetMediumSnakeParts(Point start, string color, string name)
+        private List<SnekPart> GetSquareSnakeParts(Point start, string color, string name)
         {
             List<SnekPart> parts = new List<SnekPart>();
 
@@ -31,15 +31,17 @@ namespace SignalR_Snake.Models.Factory
             {
                 Color = color,
                 Position = new Point(start.X, start.Y),
-                Name = name
+                Name = name,
+                Shape = "square"
             });
 
-            for (int i = 1; i < 15; i++)
+            for (int i = 1; i < 20; i++)
             {
                 parts.Add(new SnekPart
                 {
                     Color = color,
                     Position = new Point(start.X - (i * 6), start.Y - (i * 6)),
+                    Shape = "square"
                 });
             }
 

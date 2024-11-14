@@ -11,6 +11,7 @@ namespace SignalR_Snake.Models
         public Point Position { get; set; }
         public string Color { get; set; }
         public string Name { get; set; } 
+        public string Shape { get; set; }
     }
 }
 

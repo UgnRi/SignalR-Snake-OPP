@@ -6,7 +6,7 @@ using SignalR_Snake.Models.Builder;
 
 namespace SignalR_Snake.Models.Factory
 {
-    public class ShortSnakeFactory : SnakeFactory
+    public class RandomSnakeFactory : SnakeFactory
     {
         public override SnakeBuilder CreateSnakeBuilder(string name)
         {
@@ -14,7 +14,7 @@ namespace SignalR_Snake.Models.Factory
             Point start = new Point(Rng.Next(300, 700), Rng.Next(300, 700));
             string color = SnakeHub.RandomColor();
 
-            var parts = GetShortSnakeParts(start, color, name);
+            var parts = GetRandomSnakeParts(start, color, name);
 
             return (SnakeBuilder)new SnakeBuilder()
                 .SetName(name)
@@ -23,7 +23,7 @@ namespace SignalR_Snake.Models.Factory
                 .AddParts(parts);
         }
 
-        private List<SnekPart> GetShortSnakeParts(Point start, string color, string name)
+        private List<SnekPart> GetRandomSnakeParts(Point start, string color, string name)
         {
             List<SnekPart> parts = new List<SnekPart>();
 
@@ -31,15 +31,20 @@ namespace SignalR_Snake.Models.Factory
             {
                 Color = color,
                 Position = new Point(start.X, start.Y),
-                Name = name
+                Name = name,
             });
 
-            for (int i = 1; i < 5; i++)
+            Random random = new Random();
+            for (int i = 1; i < 25; i++)
             {
+                string[] shapes = { "triangle", "square", "circle" };
+                string randomShape = shapes[random.Next(shapes.Length)];
+    
                 parts.Add(new SnekPart
                 {
                     Color = color,
                     Position = new Point(start.X - (i * 6), start.Y - (i * 6)),
+                    Shape = randomShape
                 });
             }
 

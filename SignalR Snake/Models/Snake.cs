@@ -24,6 +24,7 @@ namespace SignalR_Snake.Models
         public int SpeedTwo { get; set; } = 8;
         public string ConnectionId { get; set; }
         public double Direction { get; set; }
+        public string Shape { get; set; }
         public List<SnekPart> Parts { get; set; }
         public string Color { get; set; }
 
