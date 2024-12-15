@@ -12,8 +12,11 @@ using Microsoft.Ajax.Utilities;
 using Microsoft.AspNet.SignalR;
 using Microsoft.AspNet.SignalR.Hubs;
 using SignalR_Snake.Models;
+using SignalR_Snake.Models.Flyweight;
 using SignalR_Snake.Models.Sound;
+using SignalR_Snake.Models.Memento;
 using SignalR_Snake.Models.Builder;
+using SignalR_Snake.Models.Iterator;
 using SignalR_Snake.Models.Factory;
 using SignalR_Snake.Models.Strategies;
 using SignalR_Snake.Models.Observer;
@@ -28,11 +31,15 @@ namespace SignalR_Snake.Hubs
     {
         public static List<Snake> Sneks = new List<Snake>();
         public static List<Food> Foods = new List<Food>();
+        public static List<Obstacle> Obstacles = new List<Obstacle>();
         public static List<Projectile> Projectiles = new List<Projectile>();
         private static CommandInvoker commandInvoker = new CommandInvoker();
         private static IHubCallerConnectionContext<dynamic> clientsStatic;
         public static Random Rng = new Random();
         private static IGameSound gameSound;
+        private static GameStateMemento savedState = null;
+        private static bool isGameSaved = false;
+        private static readonly FoodFlyweightFactory foodFactory = new FoodFlyweightFactory();
 
         public List<ISnakeObserver> observers = new List<ISnakeObserver>();
 
@@ -201,8 +208,10 @@ namespace SignalR_Snake.Hubs
         private static Food PrototypeFood = new Food();
         private static void MoveTimer_Elapsed(object sender, System.Timers.ElapsedEventArgs e)
         {
+            var hubContext = GlobalHost.ConnectionManager.GetHubContext<SnakeHub>();
             lock (Sneks)
             {
+                var snakesToRemove = new List<Snake>();
                 foreach (var snek in Sneks)
                 {
                     //Strategy
@@ -216,25 +225,47 @@ namespace SignalR_Snake.Hubs
                     }
 
                     snek.Parts[0].Position = nextPosition;
+                    var obstacleAggregate = new ObstacleAggregate(Obstacles);
+                    var obstacleIterator = obstacleAggregate.CreateIterator();
+
+                    while (obstacleIterator.HasNext())
+                    {
+                        var obstacle = obstacleIterator.Next();
+                        int hitboxSize = 20;
+
+                        if (snek.Parts[0].Position.X >= obstacle.Position.X - hitboxSize &&
+                            snek.Parts[0].Position.X <= obstacle.Position.X + hitboxSize &&
+                            snek.Parts[0].Position.Y >= obstacle.Position.Y - hitboxSize &&
+                            snek.Parts[0].Position.Y <= obstacle.Position.Y + hitboxSize)
+                        {
+                            hubContext.Clients.User(snek.ConnectionId).died();
+                            snakesToRemove.Add(snek);
+                            break;
+                        }
+                    }
                     lock (Foods)
                     {
                         for (int i = 0; i < 1000 - Foods.Count; i++)
                         {
-                            Food clonedFood = (Food)PrototypeFood.Clone();
-                            clonedFood.Position = new Point(Rng.Next(0, 2000), Rng.Next(0, 2000));
-                            
-                            clonedFood.Color = RandomColor();
+                            string color = RandomColorSingletonHelper.Instance.GenerateRandomColor();
+                            Food sharedFood = foodFactory.GetFood(color);
+                            Console.WriteLine($"Shared Food Hash Code (Color: {color}): {sharedFood.GetHashCode()}");
 
-                            Console.WriteLine($"Original Food Memory Address: {PrototypeFood.GetHashCode()}");
-                            Console.WriteLine($"Cloned Food Memory Address: {clonedFood.GetHashCode()}");
-                        
-                            Foods.Add(clonedFood);
+                            Food newFood = (Food)sharedFood.Clone();
+                            Console.WriteLine($"Cloned Food Hash Code: {newFood.GetHashCode()}");
+                            newFood.Position = new Point(Rng.Next(0, 2000), Rng.Next(0, 2000));
+
+                            Foods.Add(newFood);
                         }
 
+                        var foodAggregate = new FoodAggregate(Foods);
+                        var foodIterator = foodAggregate.CreateIterator();
                         List<Food> toRemove = new List<Food>();
-                        foreach (var food in Foods.ToList())
+                        while (foodIterator.HasNext())
                         {
+                            var food = foodIterator.Next();
                             int w = snek.Width;
+
                             if (snek.Parts[0].Position.X - w <= food.Position.X &&
                                 snek.Parts[0].Position.X + w >= food.Position.X &&
                                 snek.Parts[0].Position.Y - w < food.Position.Y &&
@@ -244,7 +275,6 @@ namespace SignalR_Snake.Hubs
                                 snek.Parts.Add(snek.Parts[snek.Parts.Count - 1]);
                                 snek.Parts.Add(snek.Parts[snek.Parts.Count - 1]);
                                 toRemove.Add(food);
-                                //SnakeHub.PlayTapSound();
                             }
                         }
                         foreach (var food in toRemove)
@@ -252,8 +282,21 @@ namespace SignalR_Snake.Hubs
                             Foods.Remove(food);
                         }
                     }
-                }
+                    lock (Obstacles)
+                    {
+                        if (Obstacles.Count < 20)
+                        {
+                            Point position = new Point(Rng.Next(0, 2000), Rng.Next(0, 2000));
+                            string color = RandomColorSingletonHelper.Instance.GenerateRandomColor();
 
+                            Obstacles.Add(new Obstacle(position, color));
+                        }
+                    }
+                }
+                foreach (var snek in snakesToRemove)
+                {
+                    Sneks.Remove(snek);
+                }
             }
         }
 
@@ -261,30 +304,48 @@ namespace SignalR_Snake.Hubs
         {
             lock (Sneks)
             {
-                List<Snake> toRemoveSnakes = new List<Snake>();
-                foreach (var snek in Sneks)
-                {
-                    if (!Sneks.Any(x => x.Parts.Any(c => c.Position.X > snek.Parts[0].Position.X - snek.Width &&
-                                                         c.Position.X < snek.Parts[0].Position.X + snek.Width
-                                                         && c.Position.Y > snek.Parts[0].Position.Y - snek.Width
-                                                         && c.Position.Y < snek.Parts[0].Position.Y + snek.Width) &&
-                                        snek != x)) return;
+                var snakeAggregate = new SnakeAggregate(Sneks);
+                var snakeIterator = snakeAggregate.CreateIterator();
 
+                List<Snake> toRemoveSnakes = new List<Snake>();
+
+                while (snakeIterator.HasNext())
+                {
+                    var snek = snakeIterator.Next();
+
+                    // Check if the snake collides with another snake
+                    bool collision = Sneks.Any(x => x.Parts.Any(c =>
+                        c.Position.X > snek.Parts[0].Position.X - snek.Width &&
+                        c.Position.X < snek.Parts[0].Position.X + snek.Width &&
+                        c.Position.Y > snek.Parts[0].Position.Y - snek.Width &&
+                        c.Position.Y < snek.Parts[0].Position.Y + snek.Width) && x != snek);
+
+                    if (!collision)
+                        continue;
+
+                    // Notify the client that the snake has died
                     clientsStatic.User(snek.ConnectionId).Died();
+
+                    // Add snake parts back as food
                     foreach (var part in snek.Parts)
                     {
-                        Foods.Add(new Food() {Color = RandomColor(), Position = part.Position});
+                        Foods.Add(new Food() { Color = RandomColor(), Position = part.Position });
                     }
+
+                    // Mark the snake for removal
                     toRemoveSnakes.Add(snek);
                     clientsStatic.User(snek.ConnectionId).Died();
-                    break;
+                    break; // Stop after processing one collision
                 }
+
+                // Remove flagged snakes after iteration
                 foreach (var snek in toRemoveSnakes)
                 {
                     Sneks.Remove(snek);
                 }
             }
         }
+
 
         public void AllPos()
         {
@@ -301,8 +362,7 @@ namespace SignalR_Snake.Hubs
                     snakeParts.AddRange(snek.Parts);
                 }
                 snakeParts.Reverse();
-                Clients.Caller.AllPos(snakeParts, myPoint, Foods);
-                //Clients.All.AllPos(snakePoints.ToArray(), myPoint);
+                Clients.Caller.AllPos(snakeParts, myPoint, Foods, Obstacles);
             }
         }
 
@@ -388,93 +448,160 @@ namespace SignalR_Snake.Hubs
         {
             lock (Sneks)
             {
-                foreach (var snek in Sneks.Where(snek => snek.ConnectionId.Equals(Context.ConnectionId)))
+                var snakeAggregate = new SnakeAggregate(Sneks);
+                var snakeIterator = snakeAggregate.CreateIterator();
+
+                while (snakeIterator.HasNext())
                 {
-                    snek.Dir = dir;
+                    var snek = snakeIterator.Next();
+                    if (snek.ConnectionId.Equals(Context.ConnectionId))
+                    {
+                        snek.Dir = dir;
+                        break;
+                    }
                 }
             }
+        }
 
-            #region 
-
-/*
+        //MEMENTO
+        public void HandleEscapeKey()
+        {
             lock (Sneks)
             {
-                if (!Sneks.Any(x => x.ConnectionId.Equals(Context.ConnectionId))) return;
-                Snake snek = Sneks.First(x => x.ConnectionId.Equals(Context.ConnectionId));
-                Point nextPosition;
-                if (snek.Fast)
+                if (!isGameSaved)
                 {
-                    nextPosition =
-                        new Point(snek.Parts[0].Position.X + (int) (Math.Cos(dir*(Math.PI/180))*snek.SpeedTwo),
-                            snek.Parts[0].Position.Y + (int) (Math.Sin(dir*(Math.PI/180))*snek.SpeedTwo));
+                    savedState = SaveGameState();
+                    isGameSaved = true;
+                    Clients.Caller.notifyChat("Game State Saved!");
                 }
                 else
                 {
-                    nextPosition = new Point(snek.Parts[0].Position.X + (int) (Math.Cos(dir*(Math.PI/180))*snek.Speed),
-                        snek.Parts[0].Position.Y + (int) (Math.Sin(dir*(Math.PI/180))*snek.Speed));
-                }
-
-
-                for (int i = 0; i < snek.Parts.Count - 1; i++)
-                {
-                    if (i != snek.Parts.Count - 1)
-                    {
-                        snek.Parts[snek.Parts.Count - (i + 1)].Position =
-                            snek.Parts[snek.Parts.Count - (2 + i)].Position;
-                    }
-                }
-                snek.Parts[0].Position = nextPosition;
-                //snek.Position[0].X += (int)(Math.Cos(dir * (Math.PI / 180)) * snek.Speed);
-                //snek.Position[0].Y += (int)(Math.Sin(dir * (Math.PI / 180)) * snek.Speed);
-                /*
-
-            List<Point> snakePoints = new List<Point>();
-
-            foreach (var snake in Sneks)
-            {
-                for (int i = 0; i < snake.Position.Count; i++)
-                {
-                    snakePoints.Add(snake.Position[i]);
+                    LoadGameState();
+                    isGameSaved = false;
+                    Clients.Caller.notifyChat("Game State Loaded!");
                 }
             }
-            
-                lock (Foods)
-                {
-                    if (Foods.Count < 1000)
-                    {
-                        for (int i = 0; i < 1000 - Foods.Count; i++)
-                        {
-                            Point foodP = new Point(Rng.Next(0, 2000), Rng.Next(0, 2000));
-                            Food food = new Food() {Color = RandomColor(), Position = foodP};
-                            Foods.Add(food);
-                            //Foods.Add(new Point(rng.Next(0,1000),rng.Next(0,1000)));
-                        }
-                    }
-
-                    List<Food> toRemove = new List<Food>();
-                    foreach (var food in Foods.ToList())
-                    {
-                        int w = snek.Width;
-                        if (snek.Parts[0].Position.X - w <= food.Position.X &&
-                            snek.Parts[0].Position.X + w >= food.Position.X &&
-                            snek.Parts[0].Position.Y - w < food.Position.Y &&
-                            snek.Parts[0].Position.Y + 2*w > food.Position.Y)
-                        {
-                            snek.Parts.Add(snek.Parts[snek.Parts.Count - 1]);
-                            snek.Parts.Add(snek.Parts[snek.Parts.Count - 1]);
-                            snek.Parts.Add(snek.Parts[snek.Parts.Count - 1]);
-                            toRemove.Add(food);
-                        }
-                    }
-                    foreach (var food in toRemove)
-                    {
-                        Foods.Remove(food);
-                    }
-                }
-                */
-            //Clients.Client(Context.ConnectionId).Pos(snakePoints.ToArray(), snek.Position[0]);}
-
-            #endregion
         }
+
+        public GameStateMemento SaveGameState()
+        {
+            lock (Sneks)
+            {
+                Clients.Caller.notifyChat("Game state saved!");
+                return new GameStateMemento(Sneks, Foods, Obstacles);
+            }
+        }
+
+        public void LoadGameState()
+        {
+            if (savedState == null)
+            {
+                Clients.Caller.notifyChat("No saved game state found!");
+                return;
+            }
+
+            lock (Sneks)
+            {
+                Sneks.Clear();
+                Foods.Clear();
+                Obstacles.Clear();
+                Sneks.AddRange(savedState.GetSnakes());
+                Foods.AddRange(savedState.GetFoods());
+                Obstacles.AddRange(savedState.GetObstacles());
+                Clients.All.AllPos(Sneks.SelectMany(s => s.Parts).ToList(), new Point(), Foods, Obstacles);
+                Clients.Caller.notifyChat("Game State Loaded!");
+            }
+        }
+
+        //PERFORMANCE TESTING
+        public void TestPerformance()
+        {
+            try
+            {
+                Console.WriteLine("TestPerformance invoked");
+
+                MeasurePerformance(TestWithoutFlyweight, "Without Flyweight");
+                MeasurePerformance(TestWithFlyweight, "With Flyweight");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error during TestPerformance: {ex.Message}");
+            }
+        }
+
+        private void MeasurePerformance(Action testMethod, string testName)
+        {
+            try
+            {
+                // Force garbage collection to ensure clean memory state
+                GC.Collect();
+                GC.WaitForPendingFinalizers();
+                GC.Collect();
+
+                long beforeMemory = GC.GetTotalMemory(true);
+                Stopwatch stopwatch = Stopwatch.StartNew();
+
+                // Artificial load to simulate measurable execution time
+                for (int i = 0; i < 100; i++) // Run the test 100 times
+                {
+                    testMethod.Invoke();
+                }
+
+                stopwatch.Stop();
+                long afterMemory = GC.GetTotalMemory(true);
+
+                var results = new
+                {
+                    TestName = testName,
+                    ExecutionTime = stopwatch.ElapsedMilliseconds,
+                    MemoryUsage = afterMemory - beforeMemory
+                };
+
+                Console.WriteLine($"Test: {results.TestName}, Execution Time: {results.ExecutionTime} ms, Memory Used: {results.MemoryUsage} bytes");
+
+                // Send results back to the client
+                Clients.Caller.notifyTestResults(results);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error in MeasurePerformance: {ex.Message}");
+            }
+        }
+
+
+        private void TestWithoutFlyweight()
+        {
+            List<Food> foods = new List<Food>();
+            Random rng = new Random();
+
+            for (int i = 0; i < 10000; i++)
+            {
+                string color = $"#{rng.Next(0x1000000):X6}";
+                Food newFood = new Food
+                {
+                    Color = color,
+                    Position = new Point(rng.Next(0, 2000), rng.Next(0, 2000))
+                };
+                foods.Add(newFood);
+            }
+        }
+
+        private static readonly string[] PredefinedColors = { "#FF0000", "#00FF00", "#0000FF", "#FFFF00", "#FF00FF" };
+        private void TestWithFlyweight()
+        {
+            FoodFlyweightFactory foodFactory = new FoodFlyweightFactory();
+            List<Food> foods = new List<Food>();
+            Random rng = new Random();
+
+            for (int i = 0; i < 10000; i++)
+            {
+                string color = PredefinedColors[rng.Next(PredefinedColors.Length)]; // Reuse colors
+                Food sharedFood = foodFactory.GetFood(color);
+                Food newFood = (Food)sharedFood.Clone();
+                newFood.Position = new Point(rng.Next(0, 2000), rng.Next(0, 2000));
+                foods.Add(newFood);
+            }
+        }
+        //EO PERFORMANCE TESTING
     }
 }

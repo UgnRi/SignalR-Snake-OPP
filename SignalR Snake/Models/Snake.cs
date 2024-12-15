@@ -49,5 +49,23 @@ namespace SignalR_Snake.Models
             }
             Debug.WriteLine($"Movement strategy changed to: {strategyType}");
         }
+        //For memento
+        public Snake Clone()
+        {
+            return new Snake
+            {
+                ConnectionId = this.ConnectionId,
+                Dir = this.Dir,
+                Speed = this.Speed,
+                Width = this.Width,
+                MovementStrategy = this.MovementStrategy,
+                Parts = this.Parts.Select(p => new SnekPart
+                {
+                    Position = new Point(p.Position.X, p.Position.Y),
+                    Color = p.Color,
+                    Shape = p.Shape
+                }).ToList()
+            };
+        }
     }
 }

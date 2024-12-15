@@ -15,7 +15,10 @@
     <div id="chatbox" style="position: fixed; bottom: 10px; right: 10px; width: 200px; height: 150px; overflow-y: auto; background-color: rgba(0,0,0,0.8); color: white; padding: 10px; border-radius: 5px;">
         <p><strong>Chat:</strong></p>
     </div>
-    <button id="generateColorsButton" style="position: absolute; top: 10px; left: 10px;">Generate Random Colors (50 Requests)</button>
+    <div id="testControls" style="position: fixed; top: 10px; left: 10px; background-color: rgba(0, 0, 0, 0.8); padding: 10px; border-radius: 5px;">
+        <button id="runPerformanceTest" style="color: white; background-color: #333; border: none; padding: 10px; cursor: pointer;">Run Performance Test</button>
+        <div id="testResults" style="margin-top: 10px; color: white;"></div>
+    </div>
 </body>
 </html>
 
@@ -62,8 +65,10 @@
         var cursorX = 0;
         var cursorY = 0;
         var snakeParts = [];
+        var gameSaved = false;
         var scores = [];
         var Gfoods = [];
+        var DObstacles = []; 
         var myProjectiles = [];
         var myPoint;
         var lastUpdateTime = Date.now();
@@ -76,10 +81,34 @@
             // Connection
             var com = $.connection.snakeHub;
 
+            //PERFORMACE TEST
+            hub.client.notifyTestResults = function (results) {
+                console.log("Results received:", results);
+
+                const testResultsDiv = document.getElementById("testResults");
+
+                // Append results dynamically
+                const resultHTML = `
+                    <p><strong>Test:</strong> ${results.TestName}</p>
+                    <p><strong>Execution Time:</strong> ${results.ExecutionTime} ms</p>
+                    <p><strong>Memory Usage:</strong> ${results.MemoryUsage} bytes</p>
+                    <hr>
+                `;
+
+                testResultsDiv.innerHTML += resultHTML; // Append results
+            };
+
+            // Handle button click to run performance test
+            $('#runPerformanceTest').click(function () {
+                hub.server.testPerformance()
+                    .done(() => console.log("Performance test started"))
+                    .fail(err => console.error("Error invoking performance test:", err));
+            });
             // SignalR
-            com.client.allPos = function (positions, mPoint, foods) {
+            com.client.allPos = function (positions, mPoint, foods, obstacles) {
                 snakeParts = positions;
                 Gfoods = foods;
+                DObstacles = obstacles
                 myPoint = mPoint;
             };
             com.client.myPos = function (point) {
@@ -92,8 +121,9 @@
                 scores = snekS;
             };
             com.client.died = function () {
+                console.log("Snake has died. Redirecting to the main screen...");
                 $.connection.hub.stop();
-                window.location.href = "";
+                window.location.href = "/Home/";
             };
             com.client.notifyChat = function (message) {
                 var chatbox = document.getElementById('chatbox');
@@ -121,6 +151,15 @@
                     lastUpdateTime = now;
                 }
             };
+
+            //Save/Load Memento
+            document.addEventListener('keydown', function (e) {
+                if (e.key === 'Escape') {
+                    hub.server.handleEscapeKey()
+                        .done(() => console.log("Escape key pressed - Save/Load triggered"))
+                        .fail(err => console.error("Error invoking HandleEscapeKey:", err));
+                }
+            });
 
             // Add projectile on mouse click
             document.addEventListener('mousedown', function (e) {
@@ -205,6 +244,8 @@
                     requestAnimationFrame(gameLoop);
                 }
 
+
+
                 function updateGameState() {
                     com.server.allPos();
                     if (myPoint && cursorX && cursorY) {
@@ -262,6 +303,20 @@
                             ctx.fill();
                         });
                     }
+                    // Draw obstacles 
+                    if (DObstacles) {
+                        DObstacles.forEach(obstacle => {
+                            var position = obstacle.Position.split(",");
+                            const x = parseInt(position[0]);
+                            const y = parseInt(position[1]);
+
+                            ctx.fillStyle = obstacle.Color;
+                            ctx.beginPath();
+                            ctx.rect(x - 10, y - 10, 20, 20);
+                            ctx.fill();
+                            ctx.stroke();
+                        });
+                    }
 
                     // Draw scores
                     if (scores) {
@@ -301,12 +356,6 @@
                 setInterval(function () {
                     hub.server.score();
                 }, 1000);
-
-                $('#generateColorsButton').click(function () {
-                    for (var i = 0; i < 50; i++) { // 50 concurrent requests
-                        hub.server.generateRandomColorForClient();
-                    }
-                });
             });
         });
     </script>
