@@ -217,6 +217,7 @@
     <Compile Include="Models\Factory\SnakeFactory.cs" />
     <Compile Include="Models\Field.cs" />
     <Compile Include="Models\FlyWeight\FlyweightFactory.cs" />
+    <Compile Include="Models\FlyWeight\IFoodFlyweight.cs" />
     <Compile Include="Models\Food.cs" />
     <Compile Include="Models\Iterator\FoodAggregate.cs" />
     <Compile Include="Models\Iterator\FoodIterator.cs" />
@@ -228,7 +229,9 @@
     <Compile Include="Models\Iterator\SnakeIterator.cs" />
     <Compile Include="Models\Mediator\GameMediator.cs" />
     <Compile Include="Models\Mediator\IGameMediator.cs" />
+    <Compile Include="Models\Memento\GameCaretaker.cs" />
     <Compile Include="Models\Memento\GameStateMemento.cs" />
+    <Compile Include="Models\Memento\IGameMemento.cs" />
     <Compile Include="Models\Observer\ChatObserver.cs" />
     <Compile Include="Models\Observer\ISnakeObserver.cs" />
     <Compile Include="Models\Observer\ISnakeSubject.cs" />
