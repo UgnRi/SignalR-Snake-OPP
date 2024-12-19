@@ -24,6 +24,7 @@ using SignalR_Snake.Models.Command;
 using SignalR_Snake.Utilities;
 using Timer = System.Timers.Timer;
 using System.Security.Cryptography;
+using SignalR_Snake.Models.Mediator;
 using SignalR_Snake.Models.State;
 
 namespace SignalR_Snake.Hubs
@@ -41,6 +42,7 @@ namespace SignalR_Snake.Hubs
         private static GameStateMemento savedState = null;
         private static bool isGameSaved = false;
         private static readonly FoodFlyweightFactory foodFactory = new FoodFlyweightFactory();
+        private static readonly GameMediator gameMediator = new GameMediator();
         public static GameState CurrentState { get; private set; } = GameState.WaitingForPlayers;
         private static bool IsGamePaused = false;
         public List<ISnakeObserver> observers = new List<ISnakeObserver>();
@@ -62,8 +64,8 @@ namespace SignalR_Snake.Hubs
                 }
                 else if (CurrentState == GameState.Playing && Sneks.Count < 2)
                 {
-                    CurrentState = GameState.GameOver;
-                    OnGameOver();
+                    //CurrentState = GameState.GameOver;
+                    //OnGameOver();
                 }
             }
         }
@@ -235,6 +237,7 @@ namespace SignalR_Snake.Hubs
             lock (Sneks)
             {
                 Sneks.Add(newSnake);
+                gameMediator.RegisterSnake(newSnake);
                 NotifySnakeUpdated(newSnake);
             }
             clientsStatic = Clients;
@@ -278,7 +281,7 @@ namespace SignalR_Snake.Hubs
                     var obstacleAggregate = new ObstacleAggregate(Obstacles);
                     var obstacleIterator = obstacleAggregate.CreateIterator();
 
-                    while (obstacleIterator.HasNext())
+                    /*while (obstacleIterator.HasNext())
                     {
                         var obstacle = obstacleIterator.Next();
                         int hitboxSize = 20;
@@ -292,7 +295,17 @@ namespace SignalR_Snake.Hubs
                             snakesToRemove.Add(snek);
                             break;
                         }
+                    }*/
+                    foreach (var obstacle in Obstacles)
+                    {
+                        if (gameMediator.HandleObstacleCollision(snek, obstacle))
+                        {
+                            hubContext.Clients.User(snek.ConnectionId).died();
+                            snakesToRemove.Add(snek);
+                            break;
+                        }
                     }
+                    
                     lock (Foods)
                     {
                         for (int i = 0; i < 1000 - Foods.Count; i++)
@@ -308,7 +321,7 @@ namespace SignalR_Snake.Hubs
                             Foods.Add(newFood);
                         }
 
-                        var foodAggregate = new FoodAggregate(Foods);
+                        /*var foodAggregate = new FoodAggregate(Foods);
                         var foodIterator = foodAggregate.CreateIterator();
                         List<Food> toRemove = new List<Food>();
                         while (foodIterator.HasNext())
@@ -330,7 +343,24 @@ namespace SignalR_Snake.Hubs
                         foreach (var food in toRemove)
                         {
                             Foods.Remove(food);
+                        }*/
+                        
+                        var foodsToRemove = new List<Food>();
+                        foreach (var food in Foods)
+                        {
+                            if (gameMediator.HandleFoodCollection(snek, food))
+                            {
+                                snek.Parts.Add(snek.Parts[snek.Parts.Count - 1]);
+                                snek.Parts.Add(snek.Parts[snek.Parts.Count - 1]);
+                                snek.Parts.Add(snek.Parts[snek.Parts.Count - 1]);
+                                foodsToRemove.Add(food);
+                            }
                         }
+                        foreach (var food in foodsToRemove)
+                        {
+                            Foods.Remove(food);
+                        }
+                        
                     }
                     lock (Obstacles)
                     {
@@ -364,7 +394,21 @@ namespace SignalR_Snake.Hubs
 
                 List<Snake> toRemoveSnakes = new List<Snake>();
 
-                while (snakeIterator.HasNext())
+                foreach (var snek in Sneks)
+                {
+                    if (gameMediator.HandleSnakeCollision(snek))
+                    {
+                        clientsStatic.User(snek.ConnectionId).Died();
+                        foreach (var part in snek.Parts)
+                        {
+                            Foods.Add(new Food() { Color = RandomColor(), Position = part.Position });
+                        }
+                        toRemoveSnakes.Add(snek);
+                        break;
+                    }
+                }
+                
+                /*while (snakeIterator.HasNext())
                 {
                     var snek = snakeIterator.Next();
 
@@ -391,7 +435,7 @@ namespace SignalR_Snake.Hubs
                     toRemoveSnakes.Add(snek);
                     clientsStatic.User(snek.ConnectionId).Died();
                     break; // Stop after processing one collision
-                }
+                }*/
 
                 // Remove flagged snakes after iteration
                 foreach (var snek in toRemoveSnakes)

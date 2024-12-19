@@ -226,6 +226,8 @@
     <Compile Include="Models\Iterator\ObstacleIterator.cs" />
     <Compile Include="Models\Iterator\SnakeAggregate.cs" />
     <Compile Include="Models\Iterator\SnakeIterator.cs" />
+    <Compile Include="Models\Mediator\GameMediator.cs" />
+    <Compile Include="Models\Mediator\IGameMediator.cs" />
     <Compile Include="Models\Memento\GameStateMemento.cs" />
     <Compile Include="Models\Observer\ChatObserver.cs" />
     <Compile Include="Models\Observer\ISnakeObserver.cs" />
