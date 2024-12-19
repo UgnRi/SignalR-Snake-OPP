@@ -19,6 +19,13 @@
         <button id="runPerformanceTest" style="color: white; background-color: #333; border: none; padding: 10px; cursor: pointer;">Run Performance Test</button>
         <div id="testResults" style="margin-top: 10px; color: white;"></div>
     </div>
+    <div id="gameControls" style="position: fixed; top: 10px; right: 10px; background-color: rgba(0, 0, 0, 0.8); padding: 10px; border-radius: 5px;">
+        <button id="pauseGame" style="color: white; background-color: #333; border: none; padding: 10px; cursor: pointer;">Pause</button>
+    </div>
+    <div id="gameOverScreen" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.8); color: white; text-align: center; padding-top: 20%;">
+        <h1>Game Over</h1>
+        <!-- <button id="restartGame" style="color: white; background-color: #333; border: none; padding: 10px; cursor: pointer;">Restart</button> -->
+    </div>
 </body>
 </html>
 
@@ -73,6 +80,7 @@
         var myPoint;
         var lastUpdateTime = Date.now();
         var throttleDelay = 100;
+        let isGamePaused = false;
         //var canvas = document.getElementById('field');
         //canvas.width = window.innerWidth;  // Adjust canvas width dynamically
         //canvas.height = window.innerHeight;  // Adjust canvas height dynamically
@@ -120,11 +128,11 @@
             com.client.score = function (snekS) {
                 scores = snekS;
             };
-            com.client.died = function () {
+            @*com.client.died = function () {
                 console.log("Snake has died. Redirecting to the main screen...");
                 $.connection.hub.stop();
                 window.location.href = "/Home/";
-            };
+            };*@
             com.client.notifyChat = function (message) {
                 var chatbox = document.getElementById('chatbox');
                 var messageElement = document.createElement('p');
@@ -139,6 +147,21 @@
                 messageElement.textContent = message;
                 chatbox.appendChild(messageElement);
                 chatbox.scrollTop = chatbox.scrollHeight;
+            };
+
+            com.client.died = function () {
+                console.log("Game Over!");
+                isGamePaused = true; // Pause the game
+                document.getElementById('gameOverScreen').style.display = 'block';
+            };
+
+            com.client.updatePauseState = function (pauseState) {
+                isGamePaused = pauseState;
+                document.getElementById('pauseGame').textContent = isGamePaused ? 'Resume' : 'Pause';
+
+                if (!isGamePaused) {
+                    requestAnimationFrame(gameLoop); // Restart game loop when unpaused
+                }
             };
 
             // Mouse event
@@ -161,6 +184,22 @@
                 }
             });
 
+            // Pause/Resume logic
+            document.getElementById('pauseGame').addEventListener('click', () => {
+                isGamePaused = !isGamePaused;
+                document.getElementById('pauseGame').textContent = isGamePaused ? 'Resume' : 'Pause';
+
+                // Notify the server about the pause state
+                hub.server.togglePauseState(isGamePaused);
+            });
+            @*document.getElementById('restartGame').addEventListener('click', () => {
+                document.getElementById('gameOverScreen').style.display = 'none';
+                isGamePaused = false;
+
+                // Restart logic
+                $.connection.hub.stop();
+                window.location.reload(); // Reload the page to restart
+            });*@
             // Add projectile on mouse click
             document.addEventListener('mousedown', function (e) {
                 if (e.button === 0 && myPoint) { // Left mouse button
@@ -192,6 +231,120 @@
                     
                 }
             });
+
+            function gameLoop() {
+                if (isGamePaused) {
+                    return; // If the game is paused, do nothing
+                }
+
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                updateGameState();
+                drawGameObjects();
+                updateProjectiles();
+                drawProjectiles();
+
+                requestAnimationFrame(gameLoop); // Keep the loop running
+            }
+
+            function updateGameState() {
+                com.server.allPos();
+                if (myPoint && cursorX && cursorY) {
+                    var d = myPoint.split(",");
+                    var v1 = { x: cursorX - d[0], y: cursorY - d[1] };
+                    var angle = Math.atan2(v1.y, v1.x) * 180 / Math.PI;
+                    com.server.sendDir(angle);
+                }
+            }
+
+            function drawGameObjects() {
+                if (snakeParts) {
+                    snakeParts.forEach(part => {
+                        var d = part.Position.split(",");
+                        const x = parseFloat(d[0]);
+                        const y = parseFloat(d[1]);
+                        ctx.fillStyle = part.Color;
+                        ctx.beginPath();
+                        switch (part.Shape) {
+                            case 'circle':
+                                ctx.arc(x, y, 10, 0, 2 * Math.PI);
+                                break;
+                            case 'square':
+                                ctx.rect(x - 10, y - 10, 20, 20);
+                                break;
+                            case 'triangle':
+                                ctx.moveTo(x, y - 12);
+                                ctx.lineTo(x - 10, y + 10);
+                                ctx.lineTo(x + 10, y + 10);
+                                ctx.closePath();
+                                break;
+                            default:
+                                ctx.arc(x, y, 10, 0, 2 * Math.PI);
+                        }
+                        ctx.stroke();
+                        ctx.fill();
+
+                        if (part.Name) {
+                            ctx.font = "20px Calibri";
+                            ctx.fillStyle = 'white';
+                            ctx.fillText(part.Name, x - (part.Name.length * 5 / 2), y + 25);
+                        }
+                    });
+                }
+
+                // Draw food
+                if (Gfoods) {
+                    Gfoods.forEach(food => {
+                        var f = food.Position.split(",");
+                        ctx.fillStyle = food.Color;
+                        ctx.beginPath();
+                        ctx.arc(f[0], f[1], 2, 0, 2 * Math.PI);
+                        ctx.stroke();
+                        ctx.fill();
+                    });
+                }
+                // Draw obstacles 
+                if (DObstacles) {
+                    DObstacles.forEach(obstacle => {
+                        var position = obstacle.Position.split(",");
+                        const x = parseInt(position[0]);
+                        const y = parseInt(position[1]);
+
+                        ctx.fillStyle = obstacle.Color;
+                        ctx.beginPath();
+                        ctx.rect(x - 10, y - 10, 20, 20);
+                        ctx.fill();
+                        ctx.stroke();
+                    });
+                }
+
+                // Draw scores
+                if (scores) {
+                    ctx.font = "20px Calibri";
+                    ctx.fillStyle = 'white';
+                    var maxScoresToDisplay = Math.min(scores.length, 10);
+                    for (var i = 0; i < maxScoresToDisplay; i++) {
+                        ctx.fillText(i + 1 + ". (" + scores[i].Length * 10 + ") " + scores[i].SnakeName, canvas.width - 250, 100 + (30 * i));
+                    }
+                }
+            }
+
+            function updateProjectiles() {
+                myProjectiles.forEach((proj, index) => {
+                    proj.UpdatePosition();
+                    if (proj.IsOutOfBounds(canvas.width, canvas.height)) {
+                        myProjectiles.splice(index, 1);
+                    }
+                });
+            }
+
+            function drawProjectiles() {
+                myProjectiles.forEach(proj => {
+                    ctx.fillStyle = 'red';
+                    ctx.beginPath();
+                    ctx.arc(proj.X, proj.Y, proj.Radius, 0, 2 * Math.PI);
+                    ctx.fill();
+                });
+            }
 
             com.client.receiveProjectile = function (projectile) {
                 myProjectiles.push(new Projectile(projectile.Id, projectile.OwnerId, projectile.X, projectile.Y, projectile.DirectionX, projectile.DirectionY, 5));
@@ -234,121 +387,7 @@
                 hub.server.playBackgroundSound();
                 com.server.newSnek('@snake.Name', '@snake.Shape');
 
-                // game loop
-                function gameLoop() {
-                    ctx.clearRect(0, 0, canvas.width, canvas.height);
-                    updateGameState();
-                    drawGameObjects();
-                    updateProjectiles(); // Update projectile positions
-                    drawProjectiles();
-                    requestAnimationFrame(gameLoop);
-                }
-
-
-
-                function updateGameState() {
-                    com.server.allPos();
-                    if (myPoint && cursorX && cursorY) {
-                        var d = myPoint.split(",");
-                        var v1 = { x: cursorX - d[0], y: cursorY - d[1] };
-                        var angle = Math.atan2(v1.y, v1.x) * 180 / Math.PI;
-                        com.server.sendDir(angle);
-                    }
-
-                }
-
-                function drawGameObjects() {
-                    if (snakeParts) {
-                        snakeParts.forEach(part => {
-                            var d = part.Position.split(",");
-                            const x = parseFloat(d[0]);
-                            const y = parseFloat(d[1]);
-                            ctx.fillStyle = part.Color;
-                            ctx.beginPath();
-                            switch (part.Shape) {
-                                case 'circle':
-                                    ctx.arc(x, y, 10, 0, 2 * Math.PI);
-                                    break;
-                                case 'square':
-                                    ctx.rect(x - 10, y - 10, 20, 20);
-                                    break;
-                                case 'triangle':
-                                    ctx.moveTo(x, y - 12);
-                                    ctx.lineTo(x - 10, y + 10);
-                                    ctx.lineTo(x + 10, y + 10);
-                                    ctx.closePath();
-                                    break;
-                                default:
-                                    ctx.arc(x, y, 10, 0, 2 * Math.PI);
-                            }
-                            ctx.stroke();
-                            ctx.fill();
-
-                            if (part.Name) {
-                                ctx.font = "20px Calibri";
-                                ctx.fillStyle = 'white';
-                                ctx.fillText(part.Name, x - (part.Name.length * 5 / 2), y + 25);
-                            }
-                        });
-                    }
-
-                    // Draw food
-                    if (Gfoods) {
-                        Gfoods.forEach(food => {
-                            var f = food.Position.split(",");
-                            ctx.fillStyle = food.Color;
-                            ctx.beginPath();
-                            ctx.arc(f[0], f[1], 2, 0, 2 * Math.PI);
-                            ctx.stroke();
-                            ctx.fill();
-                        });
-                    }
-                    // Draw obstacles 
-                    if (DObstacles) {
-                        DObstacles.forEach(obstacle => {
-                            var position = obstacle.Position.split(",");
-                            const x = parseInt(position[0]);
-                            const y = parseInt(position[1]);
-
-                            ctx.fillStyle = obstacle.Color;
-                            ctx.beginPath();
-                            ctx.rect(x - 10, y - 10, 20, 20);
-                            ctx.fill();
-                            ctx.stroke();
-                        });
-                    }
-
-                    // Draw scores
-                    if (scores) {
-                        ctx.font = "20px Calibri";
-                        ctx.fillStyle = 'white';
-                        var maxScoresToDisplay = Math.min(scores.length, 10);
-                        for (var i = 0; i < maxScoresToDisplay; i++) {
-                            ctx.fillText(i + 1 + ". (" + scores[i].Length * 10 + ") " + scores[i].SnakeName, canvas.width - 250, 100 + (30 * i));
-                        }
-                    }
-                }
-
-                function updateProjectiles() {
-                    myProjectiles.forEach((proj, index) => {
-                        proj.UpdatePosition();
-                        console.log(`Projectile ${index}: X = ${proj.X}, Y = ${proj.Y}`);
-
-                        if (proj.IsOutOfBounds(canvas.width, canvas.height)) {
-                            myProjectiles.splice(index, 1);
-                        }
-                    });
-                }
-
-                function drawProjectiles() {
-                    myProjectiles.forEach(proj => {
-                        ctx.fillStyle = 'red';
-                        ctx.beginPath();
-                        ctx.arc(proj.X, proj.Y, proj.Radius, 0, 2 * Math.PI);
-                        ctx.fill();
-                    });
-                }
-
+               
                 // Start game loop
                 gameLoop();
 
