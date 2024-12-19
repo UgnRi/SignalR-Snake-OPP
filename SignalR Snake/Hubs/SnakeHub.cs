@@ -24,6 +24,7 @@ using SignalR_Snake.Models.Command;
 using SignalR_Snake.Utilities;
 using Timer = System.Timers.Timer;
 using System.Security.Cryptography;
+using SignalR_Snake.Models.State;
 
 namespace SignalR_Snake.Hubs
 {
@@ -40,13 +41,57 @@ namespace SignalR_Snake.Hubs
         private static GameStateMemento savedState = null;
         private static bool isGameSaved = false;
         private static readonly FoodFlyweightFactory foodFactory = new FoodFlyweightFactory();
-
+        public static GameState CurrentState { get; private set; } = GameState.WaitingForPlayers;
+        private static bool IsGamePaused = false;
         public List<ISnakeObserver> observers = new List<ISnakeObserver>();
 
         public SnakeHub()
         {
             var chatObserver = new ChatObserver();
             RegisterObserver(chatObserver);
+        }
+        
+        private static void UpdateGameState()
+        {
+            if (IsGamePaused) return;
+            lock (Sneks)
+            {
+                if (CurrentState == GameState.WaitingForPlayers && Sneks.Count >= 2)
+                {
+                    CurrentState = GameState.Playing;
+                }
+                else if (CurrentState == GameState.Playing && Sneks.Count < 2)
+                {
+                    CurrentState = GameState.GameOver;
+                    OnGameOver();
+                }
+            }
+        }
+        private static void OnGameOver()
+        {
+            Console.WriteLine("Game Over triggered!");
+
+            var hubContext = GlobalHost.ConnectionManager.GetHubContext<SnakeHub>();
+            hubContext.Clients.All.died();
+        }
+        
+        public void TogglePauseState(bool pauseState)
+        {
+            lock (Sneks)
+            {
+                IsGamePaused = pauseState;
+                
+                var hubContext = GlobalHost.ConnectionManager.GetHubContext<SnakeHub>();
+                hubContext.Clients.All.updatePauseState(IsGamePaused);
+            }
+        }
+
+        public void ResumeGame()
+        {
+            if (CurrentState == GameState.Paused)
+            {
+                CurrentState = GameState.Playing;
+            }
         }
 
         public void HoldProjectiles(double startX, double startY, double directionX, double directionY, double radius)
@@ -208,9 +253,14 @@ namespace SignalR_Snake.Hubs
         private static Food PrototypeFood = new Food();
         private static void MoveTimer_Elapsed(object sender, System.Timers.ElapsedEventArgs e)
         {
-            var hubContext = GlobalHost.ConnectionManager.GetHubContext<SnakeHub>();
+            if (IsGamePaused) return;
             lock (Sneks)
             {
+                UpdateGameState();
+                
+                if (CurrentState != GameState.Playing) return;
+                
+                var hubContext = GlobalHost.ConnectionManager.GetHubContext<SnakeHub>();
                 var snakesToRemove = new List<Snake>();
                 foreach (var snek in Sneks)
                 {
@@ -302,8 +352,13 @@ namespace SignalR_Snake.Hubs
 
         private static void Timer_Elapsed(object sender, System.Timers.ElapsedEventArgs e)
         {
+            if (IsGamePaused) return;
             lock (Sneks)
             {
+                UpdateGameState();
+
+                if (CurrentState != GameState.Playing) return;
+                
                 var snakeAggregate = new SnakeAggregate(Sneks);
                 var snakeIterator = snakeAggregate.CreateIterator();
 

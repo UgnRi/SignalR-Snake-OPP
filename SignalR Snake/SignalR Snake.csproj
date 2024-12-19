@@ -247,6 +247,7 @@
     <Compile Include="Models\Sound\ZombieSoundDecorator.cs" />
     <Compile Include="Models\Sound\GameSoundDecorator.cs" />
     <Compile Include="Models\Sound\IGameSound.cs" />
+    <Compile Include="Models\State\GameState.cs" />
     <Compile Include="Models\Strategies\BoostMovementStrategy.cs" />
     <Compile Include="Models\Strategies\StopMovementStrategy.cs" />
     <Compile Include="Models\Strategies\IMovementStrategy.cs" />
