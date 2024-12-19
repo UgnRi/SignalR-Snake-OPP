@@ -1,34 +1,36 @@
+using SignalR_Snake.Models.Memento;
+using System.Collections.Generic;
+
+
 
 namespace SignalR_Snake.Models.Memento
 {
-    public class SnakeHub
+    public class GameCaretaker
     {
-        private GameCaretaker caretaker = new GameCaretaker();
-        private bool isGameSaved;
+        private List<GameStateMemento> mementos = new List<GameStateMemento>();
 
-        public void SaveGameState()
+        public void AddMemento(GameStateMemento memento)
         {
-            GameStateMemento memento = new GameStateMemento(snakes, foods, obstacles);
-            caretaker.AddMemento(memento);
-            isGameSaved = true;
+            mementos.Add(memento);
         }
 
-        public void LoadGameState(int index)
+        public GameStateMemento GetMemento(int index)
         {
-            GameStateMemento memento = caretaker.GetMemento(index);
-            if (memento != null)
+            if (index >= 0 && index < mementos.Count)
             {
-                snakes = memento.GetSnakes();
-                foods = memento.GetFoods();
-                obstacles = memento.GetObstacles();
-                isGameSaved = false;
+                return mementos[index];
             }
+            return null;
         }
 
-        public bool IsGameSaved() => isGameSaved;
+        public int GetSavedStatesCount()
+        {
+            return mementos.Count;
+        }
 
-        public int GetSavedStatesCount() => caretaker.GetSavedStatesCount();
-
-        public void ClearAllSavedStates() => caretaker.ClearSavedStates();
+        public void ClearSavedStates()
+        {
+            mementos.Clear();
+        }
     }
 }

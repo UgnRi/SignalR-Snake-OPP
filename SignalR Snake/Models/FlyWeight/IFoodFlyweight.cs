@@ -3,16 +3,14 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using System.Drawing;
 
 namespace SignalR_Snake.Models.FlyWeight
 {
-    internal interface IFoodFlyweight
+    public interface IFoodFlyweight : ICloneable
     {
-        public interface IFood : ICloneable
-        {
-            string Color { get; set; }
-            Point Position { get; set; }
-            void Initialize(string color, Point position);
-        }
+        string Color { get; set; }
+        Point Position { get; set; }
+        void Initialize(string color, Point position);
     }
 }
