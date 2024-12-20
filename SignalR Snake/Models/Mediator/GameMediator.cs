@@ -1,3 +1,5 @@
+using SignalR_Snake.Models.TemplateMethod;
+
 namespace SignalR_Snake.Models.Mediator
 {
     using System.Collections.Generic;
@@ -8,7 +10,8 @@ namespace SignalR_Snake.Models.Mediator
         private List<Snake> snakes = new List<Snake>();
         private List<Food> foods = new List<Food>();
         private List<Obstacle> obstacles = new List<Obstacle>();
-
+        private readonly FoodCollisionHandler foodCollisionHandler = new FoodCollisionHandler();
+        private readonly ObstacleCollisionHandler obstacleCollisionHandler = new ObstacleCollisionHandler();
         public void RegisterSnake(Snake snake)
         {
             snakes.Add(snake);
@@ -43,20 +46,12 @@ namespace SignalR_Snake.Models.Mediator
 
         public bool HandleFoodCollection(Snake snake, Food food)
         {
-            int w = snake.Width;
-            return snake.Parts[0].Position.X - w <= food.Position.X &&
-                   snake.Parts[0].Position.X + w >= food.Position.X &&
-                   snake.Parts[0].Position.Y - w < food.Position.Y &&
-                   snake.Parts[0].Position.Y + 2 * w > food.Position.Y;
+            return foodCollisionHandler.HandleCollision(snake, food);
         }
 
         public bool HandleObstacleCollision(Snake snake, Obstacle obstacle)
         {
-            int hitboxSize = 20;
-            return snake.Parts[0].Position.X >= obstacle.Position.X - hitboxSize &&
-                   snake.Parts[0].Position.X <= obstacle.Position.X + hitboxSize &&
-                   snake.Parts[0].Position.Y >= obstacle.Position.Y - hitboxSize &&
-                   snake.Parts[0].Position.Y <= obstacle.Position.Y + hitboxSize;
+            return obstacleCollisionHandler.HandleCollision(snake, obstacle);
         }
 
         private bool IsCollision(Point p1, Point p2, int threshold)
