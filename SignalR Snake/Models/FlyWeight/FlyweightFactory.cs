@@ -1,13 +1,15 @@
 using System.Collections.Generic;
 using SignalR_Snake.Models;
+using SignalR_Snake.Models.FlyWeight;
 
 namespace SignalR_Snake.Models.Flyweight
 {
     public class FoodFlyweightFactory
     {
-        private readonly Dictionary<string, Food> _foodFlyweights = new Dictionary<string, Food>();
+        private readonly Dictionary<string, IFoodFlyweight> _foodFlyweights =
+            new Dictionary<string, IFoodFlyweight>();
 
-        public Food GetFood(string color)
+        public IFoodFlyweight GetFood(string color)
         {
             if (!_foodFlyweights.ContainsKey(color))
             {

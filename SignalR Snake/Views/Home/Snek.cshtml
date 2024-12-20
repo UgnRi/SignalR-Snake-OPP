@@ -26,6 +26,13 @@
         <h1>Game Over</h1>
         <!-- <button id="restartGame" style="color: white; background-color: #333; border: none; padding: 10px; cursor: pointer;">Restart</button> -->
     </div>
+    <div id="saveStateControls" style="position: fixed; top: 70px; right: 10px; background-color: rgba(0, 0, 0, 0.8); padding: 10px; border-radius: 5px;">
+        <h3 style="color: white; margin: 0 0 10px 0;">Game States</h3>
+        <button id="saveState" style="color: white; background-color: #333; border: none; padding: 10px; cursor: pointer; margin-bottom: 5px; width: 100%;">Save State</button>
+        <div id="savedStatesList" style="max-height: 200px; overflow-y: auto; margin: 10px 0;">
+        </div>
+        <button id="clearStates" style="color: white; background-color: #933; border: none; padding: 10px; cursor: pointer; width: 100%;">Clear All States</button>
+    </div>
 </body>
 </html>
 
@@ -73,6 +80,8 @@
         var cursorY = 0;
         var snakeParts = [];
         var gameSaved = false;
+        var savedStates = [];
+        var currentStateIndex = 0;
         var scores = [];
         var Gfoods = [];
         var DObstacles = []; 
@@ -106,11 +115,38 @@
                 testResultsDiv.innerHTML += resultHTML; // Append results
             };
 
+            hub.client.updateSavedStatesList = function (stateCount) {
+                const statesList = document.getElementById('savedStatesList');
+                statesList.innerHTML = '';
+
+                for (let i = 0; i < stateCount; i++) {
+                    const stateButton = document.createElement('button');
+                    stateButton.style.cssText = "color: white; background-color: #444; border: none; padding: 8px; cursor: pointer; margin: 2px 0; width: 100%;";
+                    stateButton.textContent = `Load State #${i + 1}`;
+                    stateButton.onclick = function () {
+                        hub.server.loadSpecificState(i);
+                    };
+                    statesList.appendChild(stateButton);
+                }
+            };
+
             // Handle button click to run performance test
             $('#runPerformanceTest').click(function () {
                 hub.server.testPerformance()
                     .done(() => console.log("Performance test started"))
                     .fail(err => console.error("Error invoking performance test:", err));
+            });
+
+            $('#saveState').click(function () {
+                hub.server.saveGameState()
+                    .done(() => console.log("Game state saved"))
+                    .fail(err => console.error("Error saving game state:", err));
+            });
+
+            $('#clearStates').click(function () {
+                hub.server.clearSavedStates()
+                    .done(() => console.log("All states cleared"))
+                    .fail(err => console.error("Error clearing states:", err));
             });
             // SignalR
             com.client.allPos = function (positions, mPoint, foods, obstacles) {

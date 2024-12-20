@@ -19,6 +19,7 @@ namespace SignalR_Snake.Models.Memento
 
         public List<Snake> GetSnakes() => _snakes.Select(s => s.Clone()).ToList();
         public List<Food> GetFoods() => _foods.Select(f => (Food)f.Clone()).ToList();
-        public List<Obstacle> GetObstacles() => _obstacles.Select(o => new Obstacle(o.Position, o.Color)).ToList();
+        public List<Obstacle> GetObstacles() =>
+            _obstacles.Select(o => new Obstacle(o.Position, o.Color)).ToList();
     }
 }
